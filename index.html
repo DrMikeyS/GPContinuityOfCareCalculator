@@ -4,129 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CSV Appointment Data Analyser</title>
+  <link rel="stylesheet" href="bootstrap.min.css">
+  <link href="tabulator.min.css" rel="stylesheet">
   <script src="papaparse.min.js"></script>
+  <script type="text/javascript" src="tabulator.min.js"></script>
 </head>
 <body>
-  <h1>Upload Appointment CSV</h1>
-  <input type="file" id="csvFile" accept=".csv" />
-  <pre id="output"></pre>
-  <div id="results"></div>
-  <div id="patientUpcs"></div>
-
-  <script>
-    document.getElementById('csvFile').addEventListener('change', function(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-          const data = results.data;
-          const upcStats = calculateUPC(data);
-          displayResults(upcStats);
-        }
-      });
-    });
-
-    function calculateUPC(data) {
-      const patientMap = new Map();
-      const gpPatientMap = new Map();
-      const patientUpcMap = new Map();
-      const patientConsultCount = new Map();
-
-      for (const row of data) {
-        const patientID = row['Patient ID'];
-        const clinician = row['Clinician'];
-
-        if (!patientID || !clinician) continue;
-
-        if (!patientMap.has(patientID)) {
-          patientMap.set(patientID, new Map());
-        }
-        const gpCounts = patientMap.get(patientID);
-        gpCounts.set(clinician, (gpCounts.get(clinician) || 0) + 1);
-
-        if (!gpPatientMap.has(clinician)) {
-          gpPatientMap.set(clinician, new Map());
-        }
-        const gpPatients = gpPatientMap.get(clinician);
-        gpPatients.set(patientID, (gpPatients.get(patientID) || 0) + 1);
-
-        patientConsultCount.set(patientID, (patientConsultCount.get(patientID) || 0) + 1);
-      }
-
-      const upcs = [];
-
-      for (const [patientID, gpCounts] of patientMap.entries()) {
-        const totalAppointments = Array.from(gpCounts.values()).reduce((a, b) => a + b, 0);
-        const maxAppointmentsWithSingleGP = Math.max(...gpCounts.values());
-        const upc = maxAppointmentsWithSingleGP / totalAppointments;
-        patientUpcMap.set(patientID, { upc, count: totalAppointments });
-
-        if (totalAppointments >= 3) {
-          upcs.push(upc);
-        }
-      }
-
-      const overallMean = mean(upcs);
-      const overallMedian = median(upcs);
-
-      const byGP = {};
-
-      for (const [gp, patients] of gpPatientMap.entries()) {
-        const gpUpcs = [];
-        for (const [pid, _] of patients.entries()) {
-          const gpCounts = patientMap.get(pid);
-          const totalAppointments = Array.from(gpCounts.values()).reduce((a, b) => a + b, 0);
-          const appointmentsWithThisGP = gpCounts.get(gp) || 0;
-          if (totalAppointments >= 3) {
-            const upc = appointmentsWithThisGP / totalAppointments;
-            gpUpcs.push(upc);
-          }
-        }
-        byGP[gp] = {
-          mean: mean(gpUpcs),
-          median: median(gpUpcs)
-        };
-      }
-
-      return { overallMean, overallMedian, byGP, patientUpcMap };
-    }
-
-    function mean(arr) {
-      return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-    }
-
-    function median(arr) {
-      if (!arr.length) return 0;
-      const sorted = [...arr].sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      return sorted.length % 2 !== 0
-        ? sorted[mid]
-        : (sorted[mid - 1] + sorted[mid]) / 2;
-    }
-
-    function displayResults(stats) {
-      const div = document.getElementById('results');
-      div.innerHTML = `<h2>UPC Results</h2>
-        <p><strong>Overall Mean UPC (≥3 consults):</strong> ${stats.overallMean.toFixed(3)}</p>
-        <p><strong>Overall Median UPC (≥3 consults):</strong> ${stats.overallMedian.toFixed(3)}</p>
-        <h3>By GP (≥3 consults per patient)</h3>
-        <ul>
-          ${Object.entries(stats.byGP).map(([gp, val]) =>
-            `<li><strong>${gp}:</strong> Mean: ${val.mean.toFixed(3)}, Median: ${val.median.toFixed(3)}</li>`
-          ).join('')}
-        </ul>`;
-
-      const patientDiv = document.getElementById('patientUpcs');
-      patientDiv.innerHTML = `<h3>UPC by Patient</h3>
-        <ul>
-          ${Array.from(stats.patientUpcMap.entries()).map(([pid, val]) =>
-            `<li>Patient ID ${pid}: UPC = ${val.upc.toFixed(3)}, Consults = ${val.count}</li>`
-          ).join('')}
-        </ul>`;
-    }
-  </script>
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h1 class="card-title h3 mb-4 text-center">Upload Appointment CSV</h1>
+            <input type="file" id="csvFile" accept=".csv" class="form-control mb-3" />
+            <pre id="output" class="bg-body-secondary p-2 rounded small"></pre>
+            <div id="results" class="mb-3"></div>
+            <div id="patientUpcs"></div>
+            <div id="patientUpcsTable" class="mt-4"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="text/javascript" src="script.js"></script>
 </body>
 </html>
