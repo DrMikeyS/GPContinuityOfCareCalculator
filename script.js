@@ -1,17 +1,27 @@
-document.getElementById('csvFile').addEventListener('change', function(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+document.getElementById('csvFile').setAttribute('multiple', 'multiple'); // Allow multiple file selection
 
-  Papa.parse(file, {
-    header: true,
-    skipEmptyLines: true,
-    complete: function(results) {
-      const data = results.data;
-      const upcStats = calculateUPC(data);
-      displayResults(upcStats);
-      displayTabulator(upcStats.patientUpcMap);
-    }
-  });
+document.getElementById('csvFile').addEventListener('change', function(event) {
+  const files = event.target.files;
+  if (!files.length) return;
+
+  let allData = [];
+  let filesProcessed = 0;
+
+  for (let i = 0; i < files.length; i++) {
+    Papa.parse(files[i], {
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        allData = allData.concat(results.data);
+        filesProcessed++;
+        if (filesProcessed === files.length) {
+          const upcStats = calculateUPC(allData);
+          displayResults(upcStats);
+          displayTabulator(upcStats.patientUpcMap);
+        }
+      }
+    });
+  }
 });
 
 function calculateUPC(data) {
