@@ -8,6 +8,7 @@
   <link href="tabulator.min.css" rel="stylesheet">
   <script src="papaparse.min.js"></script>
   <script type="text/javascript" src="tabulator.min.js"></script>
+  <script src="chart.js"></script>
 </head>
 <body>
   <div class="container py-5">
@@ -19,6 +20,9 @@
             <input type="file" id="csvFile" accept=".csv" class="form-control mb-3" />
             <pre id="output" class="bg-body-secondary p-2 rounded small"></pre>
             <div id="results" class="mb-3"></div>
+            <div>
+              <canvas id="upcHistogram" height="200"></canvas>
+            </div>
             <div id="patientUpcs"></div>
             <div id="patientUpcsTable" class="mt-4"></div>
           </div>

@@ -79,14 +79,68 @@ function displayResults(stats) {
     <p><strong>Overall Mean UPC (≥3 consults):</strong> ${stats.overallMean.toFixed(3)}</p>
     <p><strong>Overall Median UPC (≥3 consults):</strong> ${stats.overallMedian.toFixed(3)}</p>`;
 
-  // Optionally keep the old list for reference
-  // const patientDiv = document.getElementById('patientUpcs');
-  // patientDiv.innerHTML = `<h3>UPC by Patient</h3>
-  //   <ul>
-  //     ${Array.from(stats.patientUpcMap.entries()).map(([pid, val]) =>
-  //       `<li>Patient ID ${pid}: UPC = ${val.upc.toFixed(3)}, Consults = ${val.count}</li>`
-  //     ).join('')}
-  //   </ul>`;
+  drawHistogram(stats.patientUpcMap);
+}
+
+// Add this function to create the histogram
+function drawHistogram(patientUpcMap) {
+  // Group patients by number of consults (e.g., 3, 4, 5, ..., 10+)
+  const cohortBins = {};
+  for (const [_, val] of patientUpcMap.entries()) {
+    let bin = val.count;
+    if (bin > 10) bin = '10+';
+    cohortBins[bin] = cohortBins[bin] || [];
+    cohortBins[bin].push(val.upc);
+  }
+
+  // Prepare data for chart
+  const labels = [];
+  const medians = [];
+  Object.keys(cohortBins)
+    .sort((a, b) => {
+      if (a === '10+') return 1;
+      if (b === '10+') return -1;
+      return Number(a) - Number(b);
+    })
+    .forEach(bin => {
+      labels.push(bin.toString());
+      medians.push(median(cohortBins[bin]));
+    });
+
+  // Destroy previous chart if exists
+  if (window.upcHistogramChart) {
+    window.upcHistogramChart.destroy();
+  }
+
+  const ctx = document.getElementById('upcHistogram').getContext('2d');
+  window.upcHistogramChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Median UPC by Number of Consults',
+        data: medians,
+        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 1,
+          title: { display: true, text: 'Median UPC' }
+        },
+        x: {
+          title: { display: true, text: 'Number of Consults (Cohort)' }
+        }
+      }
+    }
+  });
 }
 
 function displayTabulator(patientUpcMap) {
