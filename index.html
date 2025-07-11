@@ -4,11 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CSV Appointment Data Analyser</title>
-  <link rel="stylesheet" href="bootstrap.min.css">
-  <link href="tabulator.min.css" rel="stylesheet">
-  <script src="papaparse.min.js"></script>
-  <script type="text/javascript" src="tabulator.min.js"></script>
-  <script src="chart.js"></script>
+  <link rel="stylesheet" href="libs/bootstrap.min.css">
+  <link href="libs/tabulator.min.css" rel="stylesheet">
+  <script src="libs/papaparse.min.js"></script>
+  <script type="text/javascript" src="libs/tabulator.min.js"></script>
+  <script src="libs/chart.js"></script>
+  <script src="libs/chartjs-plugin-annotation.min.js"></script>
 </head>
 <body>
   <div class="container py-5">
@@ -20,6 +21,8 @@
             <input type="file" id="csvFile" accept=".csv" class="form-control mb-3" />
             <pre id="output" class="bg-body-secondary p-2 rounded small"></pre>
             <div id="results" class="mb-3"></div>
+            <button class="btn btn-secondary mb-3" id="showGpFilterBtn" style="display:none;">Filter GPs</button>
+
             <div>
               <canvas id="upcHistogram" height="200"></canvas>
             </div>
@@ -30,6 +33,32 @@
       </div>
     </div>
   </div>
+
+  <!-- GP Filter Modal -->
+  <div class="modal fade" id="gpFilterModal" tabindex="-1" aria-labelledby="gpFilterModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="gpFilterModalLabel">Select GPs to Include</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted">Select the GPs you want to include in the analysis. Use the buttons below to select or deselect all GPs.</p>
+          <p class="text-muted">Note: Selecting fewer GPs will improve the UPC scores artificially. Therefore, only exclude GPs who see almost exclusively acute cases.</p>
+          <div class="mb-2">
+            <button type="button" class="btn btn-sm btn-outline-primary me-2" id="gpSelectAllBtn">Select All</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="gpSelectNoneBtn">Select None</button>
+          </div>
+          <div id="gpFilterList"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" id="applyGpFilter" data-bs-dismiss="modal">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="libs/bootstrap.min.js"></script>
   <script type="text/javascript" src="script.js"></script>
 </body>
 </html>
