@@ -29,15 +29,18 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
 function calculateUPC(data) {
   const patientMap = new Map();
   const patientUpcMap = new Map();
+  const patientAgeMap = new Map();
 
   for (const row of data) {
     const patientID = row['Patient ID'];
     const clinician = row['Clinician'];
+    const age = row['Age in years'] ? Number(row['Age in years']) : null;
 
     if (!patientID || !clinician) continue;
 
     if (!patientMap.has(patientID)) {
       patientMap.set(patientID, new Map());
+      if (age !== null && !isNaN(age)) patientAgeMap.set(patientID, age);
     }
     const gpCounts = patientMap.get(patientID);
     gpCounts.set(clinician, (gpCounts.get(clinician) || 0) + 1);
@@ -49,9 +52,10 @@ function calculateUPC(data) {
     const totalAppointments = Array.from(gpCounts.values()).reduce((a, b) => a + b, 0);
     const maxAppointmentsWithSingleGP = Math.max(...gpCounts.values());
     const upc = maxAppointmentsWithSingleGP / totalAppointments;
-    patientUpcMap.set(patientID, { upc, count: totalAppointments });
+    const age = patientAgeMap.get(patientID) ?? null;
+    patientUpcMap.set(patientID, { upc, count: totalAppointments, age });
 
-    if (totalAppointments >= 2) { // Now include 2 or more contacts
+    if (totalAppointments >= 2) {
       upcs.push(upc);
     }
   }
@@ -87,7 +91,9 @@ function displayResults(stats) {
       Overall Mean UPC (≥2 consults): <span class="fs-3">${stats.overallMean.toFixed(3)}</span>
     </div>
   `;
+  document.getElementById('helpSection').style.display = 'block';
   drawHistogram(stats.patientUpcMap);
+  drawAgeHistogram(stats.patientUpcMap); // <-- Add this line
 }
 
 // Update this function to include 2+ consults in the graph
@@ -182,11 +188,104 @@ function drawHistogram(patientUpcMap) {
   });
 }
 
+function drawAgeHistogram(patientUpcMap) {
+  // Define age cohorts
+  const cohorts = [
+    { label: "0-17", min: 0, max: 17 },
+    { label: "18-29", min: 18, max: 29 },
+    { label: "30-59", min: 30, max: 59 },
+    { label: "60-69", min: 60, max: 69 },
+    { label: "70-89", min: 70, max: 89 },
+    { label: "90+", min: 90, max: Infinity }
+  ];
+
+  // Group UPCs by age cohort
+  const cohortBins = {};
+  for (const [_, val] of patientUpcMap.entries()) {
+    if (val.age === null || isNaN(val.age) || val.count < 2) continue;
+    const age = val.age;
+    const cohort = cohorts.find(c => age >= c.min && age <= c.max);
+    if (!cohort) continue;
+    cohortBins[cohort.label] = cohortBins[cohort.label] || [];
+    cohortBins[cohort.label].push(val.upc);
+  }
+
+  // Prepare data for chart
+  const labels = cohorts.map(c => c.label);
+  const means = labels.map(label => mean(cohortBins[label] || []));
+
+  // Destroy previous chart if exists
+  if (window.upcAgeHistogramChart) {
+    window.upcAgeHistogramChart.destroy();
+  }
+
+  const ctx = document.getElementById('upcAgeHistogram').getContext('2d');
+  window.upcAgeHistogramChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Mean UPC by Age Cohort',
+        data: means,
+        backgroundColor: 'rgba(255, 159, 64, 0.7)',
+        borderColor: 'rgba(255, 159, 64, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        annotation: {
+          annotations: {
+            redLine: {
+              type: 'line',
+              yMin: 0.4,
+              yMax: 0.4,
+              borderColor: 'red',
+              borderWidth: 2,
+              label: {
+                content: 'UPC = 0.4',
+                enabled: true,
+                position: 'end',
+                color: 'red'
+              }
+            },
+            greenLine: {
+              type: 'line',
+              yMin: 0.7,
+              yMax: 0.7,
+              borderColor: 'green',
+              borderWidth: 2,
+              label: {
+                content: 'UPC = 0.7',
+                enabled: true,
+                position: 'end',
+                color: 'green'
+              }
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 1,
+          title: { display: true, text: 'Mean UPC' }
+        },
+        x: {
+          title: { display: true, text: 'Age Cohort' }
+        }
+      }
+    }
+  });
+}
+
 function displayTabulator(patientUpcMap) {
   const tableData = Array.from(patientUpcMap.entries()).map(([pid, val]) => ({
     patientID: pid,
     upc: val.upc,
-    consults: val.count
+    consults: val.count,
+    age: val.age
   }));
 
   if (window.patientTable) {
@@ -202,13 +301,14 @@ function displayTabulator(patientUpcMap) {
     data: tableData,
     layout: "fitColumns",
     responsiveLayout: "hide",
-    pagination: "local",            // Enable local pagination
-    paginationSize: 50,             // Show 50 rows per page (adjust as needed)
+    pagination: "local",
+    paginationSize: 50,
     paginationSizeSelector: [25, 50, 100, 250],
     columns: [
       { title: "Patient ID", field: "patientID", sorter: "string", headerFilter: "input" },
       { title: "UPC", field: "upc", sorter: "number", formatter: cell => cell.getValue().toFixed(3) },
-      { title: "Consults", field: "consults", sorter: "number" }
+      { title: "Consults", field: "consults", sorter: "number" },
+      { title: "Age", field: "age", sorter: "number" }
     ],
     initialSort: [
       { column: "consults", dir: "desc" }
