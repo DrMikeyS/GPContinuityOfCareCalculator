@@ -76,59 +76,17 @@ function median(arr) {
 
 function displayResults(stats) {
   const div = document.getElementById('results');
-  // Use only included GPs for classification
-  let gpCount = 0;
-  let uniqueClinicians = [];
-  if (window.allData) {
-    // If a filter is active, use only included GPs
-    let dataToCount = window.allData;
-    if (includedGPs && includedGPs.size > 0) {
-      dataToCount = window.allData.filter(row => includedGPs.has(row['Clinician']));
-    }
-    const allClinicians = dataToCount.map(row => row['Clinician']).filter(Boolean);
-    uniqueClinicians = Array.from(new Set(allClinicians));
-    gpCount = uniqueClinicians.length;
-    console.log("GPs in data (after filter):", uniqueClinicians);
+  let alertClass = "alert-danger"; // red by default
+  if (stats.overallMean >= 0.7) {
+    alertClass = "alert-success"; // green
+  } else if (stats.overallMean >= 0.4) {
+    alertClass = "alert-warning"; // yellow
   }
-
-  // Classify practice size
-  const fte = gpCount * 0.5;
-  let practiceSize = '';
-  let nationalMean = 0.61, iqr = '0.54-0.71'; // Default to 'All practices'
-  if (fte >= 7) {
-    practiceSize = 'large';
-    nationalMean = 0.59;
-    iqr = '0.51-0.64';
-  } else if (fte >= 4) {
-    practiceSize = 'medium';
-    nationalMean = 0.63;
-    iqr = '0.56-0.68';
-  } else {
-    practiceSize = 'small';
-    nationalMean = 0.70;
-    iqr = '0.61-0.82';
-  }
-
-  // Compare to quartiles
-  const [iqrLow, iqrHigh] = iqr.split('-').map(Number);
-  let comparison = '';
-  if (stats.overallMean < iqrLow) {
-    comparison = 'below average (bottom quartile)';
-  } else if (stats.overallMean > iqrHigh) {
-    comparison = 'better than average (top quartile)';
-  } else {
-    comparison = 'average (middle quartiles)';
-  }
-
-  div.innerHTML = `<h2>UPC Results</h2>
-    <p><strong>Overall Mean UPC (≥2 consults):</strong> ${stats.overallMean.toFixed(3)}</p>
-    <p>UPC is calculated as the maximum number of appointments with a single GP divided by the total number of appointments for that patient.</p>
-    <p>Your practice is classified as a <strong>${practiceSize}</strong> practice (${gpCount} GPs, estimated ${fte} FTEs).<br>
-    The national UPC for a practice of this size based on a 2017 study was <strong>${nationalMean.toFixed(2)}</strong> with an interquartile range of <strong>${iqr}</strong>.<br>
-    Therefore you are classified as <strong>${comparison}</strong> on that comparison.<br>
-    <a href="https://www.bmj.com/content/356/bmj.j84.long" target="_blank">See the study</a>.
-    <p>More generally, UPC 0.4-0.7 is considered acceptable, with 0.7+ being very good.
-    </p>`;
+  div.innerHTML = `
+    <div class="alert ${alertClass} text-center fs-4 fw-bold" role="alert" style="letter-spacing:0.5px;">
+      Overall Mean UPC (≥2 consults): <span class="fs-3">${stats.overallMean.toFixed(3)}</span>
+    </div>
+  `;
   drawHistogram(stats.patientUpcMap);
 }
 

@@ -21,6 +21,29 @@
             <input type="file" id="csvFile" accept=".csv" class="form-control mb-3" />
             <pre id="output" class="bg-body-secondary p-2 rounded small"></pre>
             <div id="results" class="mb-3"></div>
+
+            <div class="accordion mb-3" id="helpAccordion">
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="helpHeading">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#helpCollapse" aria-expanded="false" aria-controls="helpCollapse">
+                    Help understand the results
+                  </button>
+                </h2>
+                <div id="helpCollapse" class="accordion-collapse collapse" aria-labelledby="helpHeading" data-bs-parent="#helpAccordion">
+                  <div class="accordion-body">
+                    <p>
+                      <strong>UPC</strong> is calculated as the maximum number of appointments with a single GP (i.e. the GP the patient has seen most commonly) divided by the total number of appointments for that patient.
+                    </p>
+                    <ul>
+                      <li>UPC 0.7 or higher: <strong>Good continuity</strong></li>
+                      <li>UPC 0.4 to 0.7: <strong>Some continuity, with room for improvement</strong></li>
+                      <li>UPC below 0.4: <strong>Poor continuity</strong></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <button class="btn btn-secondary mb-3" id="showGpFilterBtn" style="display:none;">Filter GPs</button>
 
             <div>
