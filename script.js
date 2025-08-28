@@ -1,5 +1,8 @@
+// Core logic for loading patient data and calculating continuity of care metrics.
+// Users can upload multiple CSV files which are parsed and aggregated.
 document.getElementById('csvFile').setAttribute('multiple', 'multiple'); // Allow multiple file selection
 
+// Parse uploaded CSV files then compute and display UPC statistics.
 document.getElementById('csvFile').addEventListener('change', function(event) {
   const files = event.target.files;
   if (!files.length) return;
@@ -26,6 +29,7 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
   }
 });
 
+// Calculate UPC values for each patient and return overall statistics.
 function calculateUPC(data) {
   const patientMap = new Map();
   const patientUpcMap = new Map();
@@ -65,10 +69,12 @@ function calculateUPC(data) {
   return { overallMean, patientUpcMap };
 }
 
+// Compute the arithmetic mean of an array of numbers.
 function mean(arr) {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 }
 
+// Compute the median of an array of numbers.
 function median(arr) {
   if (!arr.length) return 0;
   const sorted = [...arr].sort((a, b) => a - b);
@@ -78,6 +84,7 @@ function median(arr) {
     : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+// Render summary results and trigger chart drawing.
 function displayResults(stats) {
   const div = document.getElementById('results');
   let alertClass = "alert-danger"; // red by default
@@ -96,7 +103,7 @@ function displayResults(stats) {
   drawAgeHistogram(stats.patientUpcMap); // <-- Add this line
 }
 
-// Update this function to include 2+ consults in the graph
+// Draw histogram of mean UPC grouped by number of consults (2+ only).
 function drawHistogram(patientUpcMap) {
   // Group patients by number of consults (2+ only)
   const cohortBins = {};
@@ -188,6 +195,7 @@ function drawHistogram(patientUpcMap) {
   });
 }
 
+// Draw histogram of mean UPC grouped by patient age cohorts.
 function drawAgeHistogram(patientUpcMap) {
   // Define age cohorts
   const cohorts = [
@@ -280,6 +288,7 @@ function drawAgeHistogram(patientUpcMap) {
   });
 }
 
+// Display patient-level UPC data in a paginated table.
 function displayTabulator(patientUpcMap) {
   const tableData = Array.from(patientUpcMap.entries()).map(([pid, val]) => ({
     patientID: pid,
@@ -328,6 +337,7 @@ document.getElementById('showGpFilterBtn').addEventListener('click', function() 
 });
 
 // --- Modal Logic ---
+// Build and show modal allowing users to filter by GP.
 function showGpFilterModal() {
   // Count consults per GP
   const gpCounts = {};
