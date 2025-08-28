@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>List Builder</title>
+  <link rel="stylesheet" href="libs/bootstrap.min.css" />
+  <script src="libs/papaparse.min.js"></script>
+</head>
+<body>
+    <div class="container py-5">
+      <h1 class="mb-4">List Builder</h1>
+      <p class="mb-3">Upload one or more appointment CSV files. The script will combine them, filter frequent attenders, and allocate patients to clinicians.</p>
+
+      <div class="mb-3">
+        <label for="fileUploads" class="form-label">Appointment files (CSV)</label>
+        <input type="file" id="fileUploads" class="form-control" accept=".csv" multiple />
+      </div>
+      <button id="loadBtn" class="btn btn-primary mb-4">Load Data</button>
+
+    <div id="sessionControls" class="mb-4 d-none">
+      <h2 class="h4">Clinician Sessions</h2>
+      <p class="small">Adjust session counts if needed, then build lists.</p>
+      <form id="sessionForm" class="mb-3"></form>
+      <button id="buildBtn" class="btn btn-success">Build Lists</button>
+    </div>
+
+    <h2 class="h4">Patient Assignments</h2>
+    <pre id="patientAssignments" class="bg-body-secondary p-3 rounded small"></pre>
+
+    <h2 class="h4 mt-4">Clinician Allocation Summary</h2>
+    <pre id="clinicianSummary" class="bg-body-secondary p-3 rounded small"></pre>
+
+    <h2 class="h4 mt-4">Mean UPC</h2>
+    <pre id="meanUpc" class="bg-body-secondary p-3 rounded small"></pre>
+  </div>
+
+  <script src="libs/bootstrap.min.js"></script>
+  <script src="listbuilder.js"></script>
+</body>
+</html>
