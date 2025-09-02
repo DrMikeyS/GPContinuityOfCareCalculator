@@ -16,6 +16,11 @@ This tool is designed to work with appointment data exported from EMIS or SystmO
 - Results are displayed in clear tables and charts.
 - Export patient-level UPC data as a CSV file.
 
+## Development and Testing
+
+- Synthetic appointment data for development and testing is available in `synthetic_test_data/appointments.csv`.
+- Use `synthetic_test_data/generate_fictional_data.py` to generate additional synthetic datasets.
+
 ## Security & Data Privacy
 
 - **All processing is done locally in your web browser.**
