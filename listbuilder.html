@@ -10,15 +10,10 @@
 <body>
   <div class="container py-5">
     <h1 class="mb-4">List Builder</h1>
-    <p class="mb-3">Upload appointment CSV files for the last 6 months and 6–12 months ago. The script will combine them, optionally limit patients by appointment count, and allocate patients to clinicians.</p>
-
+    <p class="mb-3">Upload one or more appointment CSV files. The script will combine them, filter frequent attenders, and allocate patients to clinicians.</p>
     <div class="mb-3">
-      <label for="fileRecent" class="form-label">Appointments in last 6 months (CSV)</label>
-      <input type="file" id="fileRecent" class="form-control" accept=".csv" />
-    </div>
-    <div class="mb-3">
-      <label for="filePast" class="form-label">Appointments 6–12 months ago (CSV)</label>
-      <input type="file" id="filePast" class="form-control" accept=".csv" />
+      <label for="fileInput" class="form-label">Appointment CSV file(s)</label>
+      <input type="file" id="fileInput" class="form-control" accept=".csv" multiple />
     </div>
     <div class="mb-3">
       <label for="minAppointments" class="form-label">Minimum appointments per patient</label>

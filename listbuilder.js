@@ -21,8 +21,7 @@ const includeAllCheckbox = document.getElementById('includeAll');
 
 // Load CSVs and estimate clinician sessions
 async function loadData() {
-  const recentFileInput = document.getElementById('fileRecent');
-  const pastFileInput = document.getElementById('filePast');
+  const fileInput = document.getElementById('fileInput');
   const patientAssignmentsEl = document.getElementById('patientAssignments');
   const clinicianSummaryEl = document.getElementById('clinicianSummary');
   const meanUpcEl = document.getElementById('meanUpc');
@@ -32,22 +31,19 @@ async function loadData() {
   clinicianSummaryEl.textContent = '';
   meanUpcEl.textContent = '';
 
-  const recentFile = recentFileInput.files[0];
-  const pastFile = pastFileInput.files[0];
-  if (!recentFile || !pastFile) {
-    alert('Please upload both CSV files before loading data.');
+  const files = Array.from(fileInput.files);
+  if (!files.length) {
+    alert('Please upload at least one CSV file before loading data.');
     return;
   }
+
 
   const includeAll = includeAllCheckbox.checked;
   const minAppointments = parseInt(minAppointmentsInput.value, 10) || 0;
 
-  // Load and combine data from both CSV files
-  const [recentData, pastData] = await Promise.all([
-    parseCsv(recentFile),
-    parseCsv(pastFile)
-  ]);
-  const combinedData = recentData.concat(pastData);
+  // Load and combine data from the uploaded CSV files
+  const parsedArrays = await Promise.all(files.map(parseCsv));
+  const combinedData = parsedArrays.flat();
 
   // Step 1: count appointments per patient
   const patientCounts = new Map();
