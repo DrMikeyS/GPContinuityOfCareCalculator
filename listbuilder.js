@@ -40,12 +40,33 @@ async function loadData() {
     return;
   }
 
+  const requiredHeaders = ['Patient ID', 'Clinician', 'Appointment date'];
+
+  const firstResults = await new Promise((resolve, reject) => {
+    Papa.parse(files[0], {
+      header: true,
+      skipEmptyLines: true,
+      complete: resolve,
+      error: reject
+    });
+  });
+
+  const missing = requiredHeaders.filter(h => !firstResults.meta.fields.includes(h));
+  if (missing.length) {
+    alert('Missing required headers: ' + missing.join(', '));
+    return;
+  }
 
   const includeAll = includeAllCheckbox.checked;
   const minAppointments = parseInt(minAppointmentsInput.value, 10) || 0;
 
   // Load and combine data from the uploaded CSV files
-  const parsedArrays = await Promise.all(files.map(parseCsv));
+  const parsedArrays = [firstResults.data];
+  if (files.length > 1) {
+    const otherFiles = files.slice(1);
+    const otherArrays = await Promise.all(otherFiles.map(parseCsv));
+    parsedArrays.push(...otherArrays);
+  }
   const combinedData = parsedArrays.flat();
 
   // Step 1: count appointments per patient
