@@ -16,6 +16,7 @@ function parseCsv(file) {
 
 // Store processed data for later patient assignment
 let assignmentData = null;
+let latestAssignments = null;
 const minAppointmentsInput = document.getElementById('minAppointments');
 const includeAllCheckbox = document.getElementById('includeAll');
 
@@ -25,11 +26,14 @@ async function loadData() {
   const patientAssignmentsEl = document.getElementById('patientAssignments');
   const clinicianSummaryEl = document.getElementById('clinicianSummary');
   const meanUpcEl = document.getElementById('meanUpc');
+  const exportBtn = document.getElementById('exportBtn');
 
   // Reset output areas
   patientAssignmentsEl.textContent = '';
   clinicianSummaryEl.textContent = '';
   meanUpcEl.textContent = '';
+  exportBtn.classList.add('d-none');
+  latestAssignments = null;
 
   const files = Array.from(fileInput.files);
   if (!files.length) {
@@ -237,6 +241,8 @@ function assignPatients() {
     assignmentsOutput += `Patient ID: ${pid} -> Assigned Clinician: ${clinician}\n`;
   });
   patientAssignmentsEl.textContent = assignmentsOutput;
+  latestAssignments = patientAssignments;
+  document.getElementById('exportBtn').classList.remove('d-none');
 
   // Build clinician allocation summary
   let summaryOutput = '';
@@ -258,11 +264,32 @@ function assignPatients() {
   meanUpcEl.textContent = meanUpc.toFixed(2);
 }
 
+function exportAssignments() {
+  if (!latestAssignments) {
+    alert('No assignments to export.');
+    return;
+  }
+  const rows = Object.entries(latestAssignments).map(([pid, clinician]) => ({
+    'Patient ID': pid,
+    'Assigned Clinician': clinician
+  }));
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'patient_assignments.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 // Attach click handlers
 const loadBtn = document.getElementById('loadBtn');
 loadBtn.addEventListener('click', loadData);
 const buildBtn = document.getElementById('buildBtn');
 buildBtn.addEventListener('click', assignPatients);
+const exportBtn = document.getElementById('exportBtn');
+exportBtn.addEventListener('click', exportAssignments);
 includeAllCheckbox.addEventListener('change', () => {
   minAppointmentsInput.disabled = includeAllCheckbox.checked;
 });
