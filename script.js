@@ -444,7 +444,7 @@ document.getElementById('applyGpFilter').addEventListener('click', function() {
   checks.forEach(chk => { if (chk.checked) includedGPs.add(chk.value); });
   // Filter allData and re-run analysis
   const filteredData = window.allData.filter(row => includedGPs.has(row['Clinician']));
-  const upcStats = calculateUPC(filteredData);
+  const upcStats = calculateUPC(filteredData, window.patientIdHeader);
   displayResults(upcStats);
-  displayTabulator(upcStats.patientUpcMap);
+  displayTabulator(upcStats.patientUpcMap, window.patientIdHeader);
 });
