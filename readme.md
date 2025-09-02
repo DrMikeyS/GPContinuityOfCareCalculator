@@ -58,6 +58,20 @@ This tool is designed to work with appointment data exported from EMIS or SystmO
 - Allows you to filter which GPs are included in the analysis.
 - Results are displayed in clear tables and charts.
 
+## List Builder Logic
+
+The separate **List Builder** helps allocate frequent attenders to a GP for continuity work. It works as follows:
+
+1. **Combine appointment CSVs** from the last 6 months and the previous 6 months to create a single dataset.
+2. **Count visits per patient** and keep only those with 11 or more appointments over the year.
+3. **Calculate continuity** by tallying each remaining patient's appointments with each clinician and deriving UPC scores.
+4. **Estimate clinician capacity** from appointment counts (which can be adjusted manually).
+5. **Allocate patients to clinicians**:
+   - Patients with a UPC above 0.6 remain with their top clinician.
+   - Otherwise, patients are offered to clinicians they have seen with UPC above 0.4 who still have capacity based on fair share of sessions.
+   - If no such clinician is available, patients are assigned to a clinician they have seen before or, as a last resort, to the clinician with the lightest caseload.
+6. **Produce outputs**: a list of patient assignments, a summary comparing each clinician's caseload with their fair share, and the mean UPC for the cohort.
+
 ---
 
 ## License
