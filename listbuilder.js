@@ -67,9 +67,6 @@ async function loadData() {
     return;
   }
 
-  const includeAll = includeAllCheckbox.checked;
-  const minAppointments = parseInt(minAppointmentsInput.value, 10) || 0;
-
   // Load and combine data from the uploaded CSV files
   const parsedArrays = [firstResults.data];
   if (files.length > 1) {
@@ -86,22 +83,12 @@ async function loadData() {
     if (!id) return;
     patientCounts.set(id, (patientCounts.get(id) || 0) + 1);
   });
-
-  // Step 2: optionally filter by minimum appointment count
-  const filteredData = combinedData
-    .filter(row => includeAll || patientCounts.get(row[patientIdHeader]) >= minAppointments)
-    .map(row => ({
-      'Appointment date': row['Appointment date'],
-      'Clinician': row['Clinician'],
-      [patientIdHeader]: row[patientIdHeader],
-      'Patient Count': patientCounts.get(row[patientIdHeader])
-    }));
-
-  // Step 3: build counts of appointments per patient per clinician
+  // Step 2: build counts of appointments per patient per clinician
   const patientClinicianCounts = new Map();
-  filteredData.forEach(row => {
+  combinedData.forEach(row => {
     const pid = row[patientIdHeader];
     const clinician = row['Clinician'];
+    if (!pid || !clinician) return;
     if (!patientClinicianCounts.has(pid)) {
       patientClinicianCounts.set(pid, {});
     }
@@ -109,12 +96,10 @@ async function loadData() {
     counts[clinician] = (counts[clinician] || 0) + 1;
   });
 
-  // Step 4: calculate UPC for each patient
+  // Step 3: calculate UPC for each patient
   const patientUpc = new Map();
-  const patientTotalAppointments = new Map();
   patientClinicianCounts.forEach((counts, pid) => {
-    const total = Object.values(counts).reduce((a, b) => a + b, 0);
-    patientTotalAppointments.set(pid, total);
+    const total = patientCounts.get(pid) || 0;
     const upc = {};
     Object.entries(counts).forEach(([clinician, count]) => {
       upc[clinician] = count / total;
@@ -123,13 +108,14 @@ async function loadData() {
   });
 
   // Sort patients by total appointments (frequent attenders first)
-  const sortedPatients = Array.from(patientTotalAppointments.entries())
+  const sortedPatients = Array.from(patientCounts.entries())
     .sort((a, b) => b[1] - a[1]);
 
   // Count appointments per clinician and scale to session estimates
   const clinicianAppointmentCounts = {};
-  filteredData.forEach(row => {
+  combinedData.forEach(row => {
     const clinician = row['Clinician'];
+    if (!clinician) return;
     clinicianAppointmentCounts[clinician] =
       (clinicianAppointmentCounts[clinician] || 0) + 1;
   });
@@ -187,7 +173,7 @@ async function loadData() {
   document.getElementById('buildBtn').classList.remove('d-none');
 
   // Store data for patient allocation
-  assignmentData = { patientClinicianCounts, patientUpc, sortedPatients };
+  assignmentData = { patientClinicianCounts, patientUpc, sortedPatients, patientCounts };
 }
 // Assign patients to clinicians using the session values from the UI
 function assignPatients() {
@@ -213,7 +199,15 @@ function assignPatients() {
     clinicianSessions[clinician] = isNaN(value) ? 1 : value;
   });
 
-  const { patientClinicianCounts, patientUpc, sortedPatients } = assignmentData;
+  const includeAll = includeAllCheckbox.checked;
+  const minAppointments = parseInt(minAppointmentsInput.value, 10) || 0;
+  const { patientClinicianCounts, patientUpc, sortedPatients, patientCounts } = assignmentData;
+
+  const eligiblePatients = includeAll
+    ? sortedPatients
+    : sortedPatients.filter(([pid]) => patientCounts.get(pid) >= minAppointments);
+
+  const numPatients = eligiblePatients.length;
 
   // Initialise caseloads and fair share for each clinician
   const clinicianCaseloads = {};
@@ -222,12 +216,12 @@ function assignPatients() {
   const totalSessions = Object.values(clinicianSessions).reduce((a, b) => a + b, 0);
   const fairShare = {};
   Object.keys(clinicianSessions).forEach(c => {
-    fairShare[c] = (patientUpc.size * clinicianSessions[c]) / totalSessions;
+    fairShare[c] = (numPatients * clinicianSessions[c]) / totalSessions;
   });
 
   // Assign patients to clinicians based on UPC and fair share rules
   const patientAssignments = {};
-  sortedPatients.forEach(([pid]) => {
+  eligiblePatients.forEach(([pid]) => {
     const upc = patientUpc.get(pid);
     let sorted = Object.entries(upc).sort((a, b) => b[1] - a[1]);
     sorted = sorted.filter(([c]) => clinicianSessions[c] !== undefined);
