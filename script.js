@@ -7,22 +7,33 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
   const files = event.target.files;
   if (!files.length) return;
 
-  const requiredHeaders = ['Patient ID', 'Clinician', 'Age in years', 'Appointment date'];
+  const requiredHeaders = ['Clinician', 'Age in years', 'Appointment date'];
 
   let allData = [];
   let filesProcessed = 0;
+  let patientIdHeader = null;
 
   // Parse the first file to validate headers before processing others
   Papa.parse(files[0], {
     header: true,
     skipEmptyLines: true,
     complete: function(firstResults) {
+      patientIdHeader = firstResults.meta.fields.includes('Patient ID')
+        ? 'Patient ID'
+        : firstResults.meta.fields.includes('NHS number')
+          ? 'NHS number'
+          : null;
+
       const missing = requiredHeaders.filter(h => !firstResults.meta.fields.includes(h));
-      if (missing.length) {
-        alert('Missing required headers: ' + missing.join(', '));
+      if (missing.length || !patientIdHeader) {
+        const msgs = [];
+        if (!patientIdHeader) msgs.push('Patient ID or NHS number');
+        if (missing.length) msgs.push(...missing);
+        alert('Missing required headers: ' + msgs.join(', '));
         return; // Abort further processing
       }
 
+      window.patientIdHeader = patientIdHeader;
       allData = allData.concat(firstResults.data);
       filesProcessed = 1;
 
@@ -50,21 +61,21 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
 
   function finalizeProcessing(allData) {
     window.allData = allData;
-    const upcStats = calculateUPC(allData);
+    const upcStats = calculateUPC(allData, patientIdHeader);
     displayResults(upcStats);
-    displayTabulator(upcStats.patientUpcMap);
+    displayTabulator(upcStats.patientUpcMap, patientIdHeader);
     document.getElementById('showGpFilterBtn').style.display = 'inline-block'; // <-- Add this line
   }
 });
 
 // Calculate UPC values for each patient and return overall statistics.
-function calculateUPC(data) {
+function calculateUPC(data, patientIdHeader) {
   const patientMap = new Map();
   const patientUpcMap = new Map();
   const patientAgeMap = new Map();
 
   for (const row of data) {
-    const patientID = row['Patient ID'];
+    const patientID = row[patientIdHeader];
     const clinician = row['Clinician'];
     const age = row['Age in years'] ? Number(row['Age in years']) : null;
 
@@ -317,7 +328,7 @@ function drawAgeHistogram(patientUpcMap) {
 }
 
 // Display patient-level UPC data in a paginated table.
-function displayTabulator(patientUpcMap) {
+function displayTabulator(patientUpcMap, patientIdHeader) {
   const tableData = Array.from(patientUpcMap.entries()).map(([pid, val]) => ({
     patientID: pid,
     upc: val.upc,
@@ -342,7 +353,7 @@ function displayTabulator(patientUpcMap) {
     paginationSize: 50,
     paginationSizeSelector: [25, 50, 100, 250],
     columns: [
-      { title: "Patient ID", field: "patientID", sorter: "string", headerFilter: "input" },
+      { title: patientIdHeader, field: "patientID", sorter: "string", headerFilter: "input" },
       { title: "UPC", field: "upc", sorter: "number", formatter: cell => cell.getValue().toFixed(3) },
       { title: "Consults", field: "consults", sorter: "number" },
       { title: "Age", field: "age", sorter: "number" }
