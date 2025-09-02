@@ -8,40 +8,59 @@ This tool is designed to work with appointment data exported from EMIS or SystmO
 
 ---
 
-## Getting Started
+## Features
 
-### For TPP SystmOne (S1) Users
+- Calculates the overall mean UPC for your practice.
+- Shows mean UPC by number of consults and by patient age cohort.
+- Allows you to filter which GPs are included in the analysis.
+- Results are displayed in clear tables and charts.
+- Export patient-level UPC data as a CSV file.
 
-1. **Download the Release ZIP**
-   - Download the latest release ZIP file from this repository and extract it to a folder on your computer.
+## Security & Data Privacy
 
-2. **Import the S1 Searches**
+- **All processing is done locally in your web browser.**
+  No patient data is uploaded to any server or leaves your computer at any point.
+- You can use this tool offline by opening `index.html` directly from the release ZIP.
+- Always handle and store patient data in accordance with your organisation’s information governance and data protection policies.
+
+---
+
+## Exporting Data from TPP SystmOne (S1)
+
+1. **Import the S1 Searches**
    - Import the provided S1 searches file into your SystmOne clinical system.
    - The imported searches will allow you to output all GP appointments for various time intervals.
 
-3. **Run the Search**
+2. **Run the Search**
    - SystmOne only allows reports to export 30,000 rows at a time.
    - For larger practices, you may need to use the half-year or quarter-period searches instead of the full-year search.
    - Start by trying the full-year search; if you hit the row limit, use the shorter interval searches.
 
-4. **Export the Data**
+3. **Export the Data**
    - Once the search has run, click **Breakdown Results**.
    - Select the following columns:
      - `Appointments -> Appointment Date`
      - `Appointments -> Clinician`
      - `Demographics -> Age in years`
-     - `Strategic Reporting ID -> Patient ID`
+     - `Demographics -> NHS Number`
    - Click **Refresh** to update the results.
    - When the results are ready, click the **CSV** button and save the file somewhere on your computer.
 
-5. **Run the Calculator**
-   - From the extracted release ZIP, open `index.html` in your web browser (double-click or right-click and choose "Open with" your browser).
+---
 
-6. **Import Your CSV File**
+## Running the Calculator and List Builder
+
+1. **Download the Release ZIP**
+   - Download the latest release ZIP file from this repository and extract it to a folder on your computer.
+
+2. **Run the Calculator**
+   - Open `index.html` in your web browser (double-click or right-click and choose "Open with" your browser).
    - Use the file upload button to import your CSV file.
-
-7. **Customise GPs to Include**
    - Use the "Filter GPs" button to select which GPs to include in the analysis as needed.
+
+3. **Run the List Builder**
+   - Open `listbuilder.html` in your web browser.
+   - Follow the on-screen prompts to combine appointment files and allocate patients to clinicians.
 
 ---
 
@@ -50,14 +69,6 @@ This tool is designed to work with appointment data exported from EMIS or SystmO
 - Coming soon
 
 ---
-
-## Features
-
-- Calculates the overall mean UPC for your practice.
-- Shows mean UPC by number of consults and by patient age cohort.
-- Allows you to filter which GPs are included in the analysis.
-- Results are displayed in clear tables and charts.
-- Export patient-level UPC data as a CSV file.
 
 ## List Builder Logic
 
@@ -84,12 +95,3 @@ This project is released under the MIT License.
 ## Support
 
 For issues or suggestions, please open an issue on this repository.
-
----
-
-## Security & Data Privacy
-
-- **All processing is done locally in your web browser.**  
-  No patient data is uploaded to any server or leaves your computer at any point.
-- You can use this tool offline by opening `index.html` directly from the release ZIP.
-- Always handle and store patient data in accordance with your organisation’s information governance and data protection policies.
