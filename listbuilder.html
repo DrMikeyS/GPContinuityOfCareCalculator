@@ -24,13 +24,14 @@
       </div>
     </div>
     <button id="loadBtn" class="btn btn-primary mb-4">Load Data</button>
-
-    <div id="sessionControls" class="mb-4 d-none">
-      <h2 class="h4">Clinician Sessions</h2>
-      <p class="small">Adjust session counts if needed, then build lists.</p>
-      <form id="sessionForm" class="mb-3"></form>
-      <button id="buildBtn" class="btn btn-success">Build Lists</button>
-    </div>
+    <button
+      id="sessionModalBtn"
+      class="btn btn-primary mb-4 d-none"
+      data-bs-toggle="modal"
+      data-bs-target="#sessionModal"
+    >
+      Clinician Sessions
+    </button>
 
     <h2 class="h4">Patient Assignments</h2>
 
@@ -40,7 +41,49 @@
 
 
     <h2 class="h4 mt-4">Clinician Allocation Summary</h2>
-    <pre id="clinicianSummary" class="bg-body-secondary p-3 rounded small"></pre>
+  <pre id="clinicianSummary" class="bg-body-secondary p-3 rounded small"></pre>
+  </div>
+
+  <div
+    class="modal fade"
+    id="sessionModal"
+    tabindex="-1"
+    aria-labelledby="sessionModalLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="sessionModalLabel">Clinician Sessions</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <p class="small">
+            This is the estimated number of clinical sessions a GP works. Please
+            adjust to reflect your actual circumstances. Uncheck a GP to grey
+            them out and exclude them from the allocation.
+          </p>
+          <form id="sessionForm" class="mb-3"></form>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Close
+          </button>
+          <button id="buildBtn" type="button" class="btn btn-success">
+            Build Lists
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="libs/bootstrap.min.js"></script>
