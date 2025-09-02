@@ -17,6 +17,7 @@ function parseCsv(file) {
 // Store processed data for later patient assignment
 let assignmentData = null;
 let latestAssignments = null;
+let patientIdHeader = null;
 const minAppointmentsInput = document.getElementById('minAppointments');
 const includeAllCheckbox = document.getElementById('includeAll');
 
@@ -40,7 +41,7 @@ async function loadData() {
     return;
   }
 
-  const requiredHeaders = ['Patient ID', 'Clinician', 'Appointment date'];
+  const requiredHeaders = ['Clinician', 'Appointment date'];
 
   const firstResults = await new Promise((resolve, reject) => {
     Papa.parse(files[0], {
@@ -51,9 +52,18 @@ async function loadData() {
     });
   });
 
+  patientIdHeader = firstResults.meta.fields.includes('Patient ID')
+    ? 'Patient ID'
+    : firstResults.meta.fields.includes('NHS number')
+      ? 'NHS number'
+      : null;
+
   const missing = requiredHeaders.filter(h => !firstResults.meta.fields.includes(h));
-  if (missing.length) {
-    alert('Missing required headers: ' + missing.join(', '));
+  if (missing.length || !patientIdHeader) {
+    const msgs = [];
+    if (!patientIdHeader) msgs.push('Patient ID or NHS number');
+    if (missing.length) msgs.push(...missing);
+    alert('Missing required headers: ' + msgs.join(', '));
     return;
   }
 
@@ -72,25 +82,25 @@ async function loadData() {
   // Step 1: count appointments per patient
   const patientCounts = new Map();
   combinedData.forEach(row => {
-    const id = row['Patient ID'];
+    const id = row[patientIdHeader];
     if (!id) return;
     patientCounts.set(id, (patientCounts.get(id) || 0) + 1);
   });
 
   // Step 2: optionally filter by minimum appointment count
   const filteredData = combinedData
-    .filter(row => includeAll || patientCounts.get(row['Patient ID']) >= minAppointments)
+    .filter(row => includeAll || patientCounts.get(row[patientIdHeader]) >= minAppointments)
     .map(row => ({
       'Appointment date': row['Appointment date'],
       'Clinician': row['Clinician'],
-      'Patient ID': row['Patient ID'],
-      'Patient Count': patientCounts.get(row['Patient ID'])
+      [patientIdHeader]: row[patientIdHeader],
+      'Patient Count': patientCounts.get(row[patientIdHeader])
     }));
 
   // Step 3: build counts of appointments per patient per clinician
   const patientClinicianCounts = new Map();
   filteredData.forEach(row => {
-    const pid = row['Patient ID'];
+    const pid = row[patientIdHeader];
     const clinician = row['Clinician'];
     if (!patientClinicianCounts.has(pid)) {
       patientClinicianCounts.set(pid, {});
@@ -256,7 +266,7 @@ function assignPatients() {
   // Build patient assignments output
   let assignmentsOutput = '';
   Object.entries(patientAssignments).forEach(([pid, clinician]) => {
-    assignmentsOutput += `Patient ID: ${pid} -> Assigned Clinician: ${clinician}\n`;
+    assignmentsOutput += `${patientIdHeader}: ${pid} -> Assigned Clinician: ${clinician}\n`;
   });
   patientAssignmentsEl.textContent = assignmentsOutput;
   latestAssignments = patientAssignments;
@@ -279,7 +289,7 @@ function exportAssignments() {
     return;
   }
   const rows = Object.entries(latestAssignments).map(([pid, clinician]) => ({
-    'Patient ID': pid,
+    [patientIdHeader]: pid,
     'Assigned Clinician': clinician
   }));
   const csv = Papa.unparse(rows);
