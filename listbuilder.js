@@ -25,16 +25,12 @@ async function loadData() {
   const fileInput = document.getElementById('fileInput');
   const patientAssignmentsEl = document.getElementById('patientAssignments');
   const clinicianSummaryEl = document.getElementById('clinicianSummary');
-  const meanUpcEl = document.getElementById('meanUpc');
   const exportBtn = document.getElementById('exportBtn');
 
 
   // Reset output areas
   patientAssignmentsEl.textContent = '';
   clinicianSummaryEl.textContent = '';
-  if (meanUpcEl) {
-    meanUpcEl.textContent = '';
-  }
   exportBtn.classList.add('d-none');
   latestAssignments = null;
 
