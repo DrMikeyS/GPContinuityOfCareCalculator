@@ -57,6 +57,7 @@ This tool is designed to work with appointment data exported from EMIS or SystmO
 - Shows mean UPC by number of consults and by patient age cohort.
 - Allows you to filter which GPs are included in the analysis.
 - Results are displayed in clear tables and charts.
+- Export patient-level UPC data as a CSV file.
 
 ## List Builder Logic
 

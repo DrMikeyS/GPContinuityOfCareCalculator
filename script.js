@@ -325,6 +325,10 @@ function displayTabulator(patientUpcMap) {
     placeholder: "No data available",
     footerElement: "<div style='padding: 10px; text-align: center;'>Patient Data Table</div>",
   });
+
+  const downloadBtn = document.getElementById('downloadCsvBtn');
+  downloadBtn.style.display = 'inline-block';
+  downloadBtn.onclick = () => window.patientTable.download('csv', 'patient_upcs.csv');
 }
 
 // --- GP Filter State ---
