@@ -28,6 +28,7 @@ async function loadData() {
   const meanUpcEl = document.getElementById('meanUpc');
   const exportBtn = document.getElementById('exportBtn');
 
+
   // Reset output areas
   patientAssignmentsEl.textContent = '';
   clinicianSummaryEl.textContent = '';
@@ -157,10 +158,8 @@ function assignPatients() {
 
   const patientAssignmentsEl = document.getElementById('patientAssignments');
   const clinicianSummaryEl = document.getElementById('clinicianSummary');
-  const meanUpcEl = document.getElementById('meanUpc');
   patientAssignmentsEl.textContent = '';
   clinicianSummaryEl.textContent = '';
-  meanUpcEl.textContent = '';
 
   // Read clinician sessions from form inputs
   const sessionInputs = document.querySelectorAll('#sessionForm input');
@@ -253,15 +252,6 @@ function assignPatients() {
     summaryOutput += `${clinician}: Assigned ${caseload} unique patients, Fair Share ${fair.toFixed(2)}, Deviation ${deviation.toFixed(2)}\n`;
   });
   clinicianSummaryEl.textContent = summaryOutput;
-
-  // Calculate and display mean UPC for the cohort
-  const upcValues = [];
-  patientUpc.forEach(upc => {
-    const highest = Math.max(...Object.values(upc));
-    upcValues.push(highest);
-  });
-  const meanUpc = upcValues.reduce((a, b) => a + b, 0) / upcValues.length;
-  meanUpcEl.textContent = meanUpc.toFixed(2);
 }
 
 function exportAssignments() {
