@@ -15,6 +15,7 @@
       <label for="fileInput" class="form-label">Appointment CSV file(s)</label>
       <input type="file" id="fileInput" class="form-control" accept=".csv" multiple />
     </div>
+    <button id="loadBtn" class="btn btn-primary mb-3">Load Data</button>
     <div class="mb-3">
       <label for="minAppointments" class="form-label">Minimum appointments per patient</label>
       <input type="number" id="minAppointments" class="form-control" value="11" min="1" />
@@ -23,15 +24,15 @@
         <label class="form-check-label" for="includeAll">Allocate all patients</label>
       </div>
     </div>
-    <button id="loadBtn" class="btn btn-primary mb-4">Load Data</button>
     <button
       id="sessionModalBtn"
-      class="btn btn-primary mb-4 d-none"
+      class="btn btn-primary mb-2 d-none"
       data-bs-toggle="modal"
       data-bs-target="#sessionModal"
     >
-      Clinician Sessions
+      Filter GPs and Clarify Sessions Worked
     </button>
+    <button id="buildBtn" class="btn btn-success mb-4 d-none">Build Lists</button>
 
     <h2 class="h4">Patient Assignments</h2>
 
@@ -77,9 +78,6 @@
             data-bs-dismiss="modal"
           >
             Close
-          </button>
-          <button id="buildBtn" type="button" class="btn btn-success">
-            Build Lists
           </button>
         </div>
       </div>
