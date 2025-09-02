@@ -32,7 +32,9 @@ async function loadData() {
   // Reset output areas
   patientAssignmentsEl.textContent = '';
   clinicianSummaryEl.textContent = '';
-  meanUpcEl.textContent = '';
+  if (meanUpcEl) {
+    meanUpcEl.textContent = '';
+  }
   exportBtn.classList.add('d-none');
   latestAssignments = null;
 
