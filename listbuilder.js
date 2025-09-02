@@ -16,6 +16,8 @@ function parseCsv(file) {
 
 // Store processed data for later patient assignment
 let assignmentData = null;
+const minAppointmentsInput = document.getElementById('minAppointments');
+const includeAllCheckbox = document.getElementById('includeAll');
 
 // Load CSVs and estimate clinician sessions
 async function loadData() {
@@ -35,6 +37,10 @@ async function loadData() {
     return;
   }
 
+
+  const includeAll = includeAllCheckbox.checked;
+  const minAppointments = parseInt(minAppointmentsInput.value, 10) || 0;
+
   // Load and combine data from the uploaded CSV files
   const parsedArrays = await Promise.all(files.map(parseCsv));
   const combinedData = parsedArrays.flat();
@@ -47,9 +53,9 @@ async function loadData() {
     patientCounts.set(id, (patientCounts.get(id) || 0) + 1);
   });
 
-  // Step 2: filter for frequent attenders (>=11 appointments)
+  // Step 2: optionally filter by minimum appointment count
   const filteredData = combinedData
-    .filter(row => patientCounts.get(row['Patient ID']) >= 11)
+    .filter(row => includeAll || patientCounts.get(row['Patient ID']) >= minAppointments)
     .map(row => ({
       'Appointment date': row['Appointment date'],
       'Clinician': row['Clinician'],
@@ -257,3 +263,7 @@ const loadBtn = document.getElementById('loadBtn');
 loadBtn.addEventListener('click', loadData);
 const buildBtn = document.getElementById('buildBtn');
 buildBtn.addEventListener('click', assignPatients);
+includeAllCheckbox.addEventListener('change', () => {
+  minAppointmentsInput.disabled = includeAllCheckbox.checked;
+});
+minAppointmentsInput.disabled = includeAllCheckbox.checked;
