@@ -184,6 +184,7 @@ async function loadData() {
   });
 
   document.getElementById('sessionModalBtn').classList.remove('d-none');
+  document.getElementById('buildBtn').classList.remove('d-none');
 
   // Store data for patient allocation
   assignmentData = { patientClinicianCounts, patientUpc, sortedPatients };
