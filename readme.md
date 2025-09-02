@@ -70,7 +70,7 @@ The separate **List Builder** helps allocate frequent attenders to a GP for cont
    - Patients with a UPC above 0.6 remain with their top clinician.
    - Otherwise, patients are offered to clinicians they have seen with UPC above 0.4 who still have capacity based on fair share of sessions.
    - If no such clinician is available, patients are assigned to a clinician they have seen before or, as a last resort, to the clinician with the lightest caseload.
-6. **Produce outputs**: a list of patient assignments and a summary comparing each clinician's caseload with their fair share.
+6. **Produce outputs**: a list of patient assignments (which can be exported as a CSV), a summary comparing each clinician's caseload with their fair share, and the mean UPC for the cohort.
 
 ---
 
