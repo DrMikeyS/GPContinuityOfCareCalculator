@@ -7,25 +7,53 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
   const files = event.target.files;
   if (!files.length) return;
 
+  const requiredHeaders = ['Patient ID', 'Clinician', 'Age in years', 'Appointment date'];
+
   let allData = [];
   let filesProcessed = 0;
 
-  for (let i = 0; i < files.length; i++) {
-    Papa.parse(files[i], {
-      header: true,
-      skipEmptyLines: true,
-      complete: function(results) {
-        allData = allData.concat(results.data);
-        filesProcessed++;
-        if (filesProcessed === files.length) {
-          window.allData = allData;
-          const upcStats = calculateUPC(allData);
-          displayResults(upcStats);
-          displayTabulator(upcStats.patientUpcMap);
-          document.getElementById('showGpFilterBtn').style.display = 'inline-block'; // <-- Add this line
-        }
+  // Parse the first file to validate headers before processing others
+  Papa.parse(files[0], {
+    header: true,
+    skipEmptyLines: true,
+    complete: function(firstResults) {
+      const missing = requiredHeaders.filter(h => !firstResults.meta.fields.includes(h));
+      if (missing.length) {
+        alert('Missing required headers: ' + missing.join(', '));
+        return; // Abort further processing
       }
-    });
+
+      allData = allData.concat(firstResults.data);
+      filesProcessed = 1;
+
+      if (files.length === 1) {
+        finalizeProcessing(allData);
+        return;
+      }
+
+      // Process remaining files
+      for (let i = 1; i < files.length; i++) {
+        Papa.parse(files[i], {
+          header: true,
+          skipEmptyLines: true,
+          complete: function(results) {
+            allData = allData.concat(results.data);
+            filesProcessed++;
+            if (filesProcessed === files.length) {
+              finalizeProcessing(allData);
+            }
+          }
+        });
+      }
+    }
+  });
+
+  function finalizeProcessing(allData) {
+    window.allData = allData;
+    const upcStats = calculateUPC(allData);
+    displayResults(upcStats);
+    displayTabulator(upcStats.patientUpcMap);
+    document.getElementById('showGpFilterBtn').style.display = 'inline-block'; // <-- Add this line
   }
 });
 
