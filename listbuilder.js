@@ -154,26 +154,36 @@ async function loadData() {
   let idx = 0;
   Object.entries(clinicianSessions).forEach(([clinician, sessions]) => {
     const group = document.createElement('div');
-    group.className = 'mb-2';
+    group.className = 'mb-2 d-flex align-items-center';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'form-check-input me-2';
+    checkbox.id = `clinician-${idx}`;
+    checkbox.checked = true;
     const label = document.createElement('label');
-    label.className = 'form-label';
+    label.className = 'form-check-label me-2 flex-grow-1';
+    label.setAttribute('for', `clinician-${idx}`);
     label.textContent = clinician;
-    label.setAttribute('for', `session-${idx}`);
     const input = document.createElement('input');
     input.type = 'number';
     input.min = '1';
     input.max = '10';
     input.value = sessions;
-    input.id = `session-${idx}`;
     input.dataset.clinician = clinician;
     input.className = 'form-control';
+    input.style.width = '80px';
+    checkbox.addEventListener('change', () => {
+      group.classList.toggle('text-muted', !checkbox.checked);
+      input.disabled = !checkbox.checked;
+    });
+    group.appendChild(checkbox);
     group.appendChild(label);
     group.appendChild(input);
     sessionForm.appendChild(group);
     idx += 1;
   });
 
-  document.getElementById('sessionControls').classList.remove('d-none');
+  document.getElementById('sessionModalBtn').classList.remove('d-none');
 
   // Store data for patient allocation
   assignmentData = { patientClinicianCounts, patientUpc, sortedPatients };
@@ -191,9 +201,12 @@ function assignPatients() {
   clinicianSummaryEl.textContent = '';
 
   // Read clinician sessions from form inputs
-  const sessionInputs = document.querySelectorAll('#sessionForm input');
+  const sessionInputs = document.querySelectorAll(
+    '#sessionForm input[type="number"]'
+  );
   const clinicianSessions = {};
   sessionInputs.forEach(input => {
+    if (input.disabled) return;
     const clinician = input.dataset.clinician;
     const value = parseInt(input.value, 10);
     clinicianSessions[clinician] = isNaN(value) ? 1 : value;
@@ -281,6 +294,9 @@ function assignPatients() {
     summaryOutput += `${clinician}: Assigned ${caseload} unique patients, Fair Share ${fair.toFixed(2)}, Deviation ${deviation.toFixed(2)}\n`;
   });
   clinicianSummaryEl.textContent = summaryOutput;
+  const sessionModalEl = document.getElementById('sessionModal');
+  const sessionModal = bootstrap.Modal.getInstance(sessionModalEl);
+  if (sessionModal) sessionModal.hide();
 }
 
 function exportAssignments() {
