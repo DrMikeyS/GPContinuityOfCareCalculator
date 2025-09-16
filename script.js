@@ -7,34 +7,92 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
   const files = event.target.files;
   if (!files.length) return;
 
-  const requiredHeaders = ['Clinician', 'Age in years', 'Appointment date'];
-
   let allData = [];
   let filesProcessed = 0;
-  let patientIdHeader = null;
+  let headerMap = null;
+
+  const headerAliases = {
+    patientId: ['Patient ID', 'NHS number', 'NHS Number'],
+    clinician: ['Clinician', "User Details' Full Name"],
+    age: ['Age in years', 'Age'],
+    appointmentDate: ['Appointment date', 'Date']
+  };
 
   // Parse the first file to validate headers before processing others
   Papa.parse(files[0], {
     header: true,
     skipEmptyLines: true,
     complete: function(firstResults) {
-      patientIdHeader = firstResults.meta.fields.includes('Patient ID')
-        ? 'Patient ID'
-        : firstResults.meta.fields.includes('NHS number')
-          ? 'NHS number'
-          : null;
+      const fields = firstResults.meta.fields || [];
+      const normalizedFieldMap = new Map(
+        fields.map(field => [field.trim().toLowerCase(), field])
+      );
 
-      const missing = requiredHeaders.filter(h => !firstResults.meta.fields.includes(h));
-      if (missing.length || !patientIdHeader) {
-        const msgs = [];
-        if (!patientIdHeader) msgs.push('Patient ID or NHS number');
-        if (missing.length) msgs.push(...missing);
-        alert('Missing required headers: ' + msgs.join(', '));
+      const matchHeader = aliases => {
+        for (const alias of aliases) {
+          const normalized = alias.trim().toLowerCase();
+          if (normalizedFieldMap.has(normalized)) {
+            return normalizedFieldMap.get(normalized);
+          }
+        }
+        return null;
+      };
+
+      headerMap = {
+        patientId: matchHeader(headerAliases.patientId),
+        clinician: matchHeader(headerAliases.clinician),
+        age: matchHeader(headerAliases.age),
+        appointmentDate: matchHeader(headerAliases.appointmentDate)
+      };
+
+      const missingHeaders = [];
+      if (!headerMap.patientId) missingHeaders.push('Patient ID or NHS Number');
+      if (!headerMap.clinician) missingHeaders.push("Clinician or User Details' Full Name");
+      if (!headerMap.age) missingHeaders.push('Age in years or Age');
+      if (!headerMap.appointmentDate) missingHeaders.push('Appointment date or Date');
+
+      if (missingHeaders.length) {
+        alert('Missing required headers: ' + missingHeaders.join(', '));
         return; // Abort further processing
       }
 
-      window.patientIdHeader = patientIdHeader;
-      allData = allData.concat(firstResults.data);
+      window.headerMap = headerMap;
+      const normalizeRow = row => {
+        const normalizedRow = { ...row };
+        const rowKeyLookup = new Map(
+          Object.keys(row).map(key => [key.trim().toLowerCase(), key])
+        );
+
+        const ensureField = (resolvedKey, aliases) => {
+          if (!resolvedKey) return;
+          if (resolvedKey in normalizedRow && normalizedRow[resolvedKey] !== undefined) return;
+          for (const alias of aliases) {
+            if (alias in normalizedRow && normalizedRow[alias] !== undefined) {
+              normalizedRow[resolvedKey] = normalizedRow[alias];
+              return;
+            }
+            const normalizedAlias = alias.trim().toLowerCase();
+            if (rowKeyLookup.has(normalizedAlias)) {
+              const sourceKey = rowKeyLookup.get(normalizedAlias);
+              const value = normalizedRow[sourceKey];
+              if (value !== undefined) {
+                normalizedRow[resolvedKey] = value;
+                return;
+              }
+            }
+          }
+        };
+
+        ensureField(headerMap.patientId, headerAliases.patientId);
+        ensureField(headerMap.clinician, headerAliases.clinician);
+        ensureField(headerMap.age, headerAliases.age);
+        ensureField(headerMap.appointmentDate, headerAliases.appointmentDate);
+
+        return normalizedRow;
+      };
+
+      const normalizedFirstData = firstResults.data.map(normalizeRow);
+      allData = allData.concat(normalizedFirstData);
       filesProcessed = 1;
 
       if (files.length === 1) {
@@ -48,7 +106,8 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
           header: true,
           skipEmptyLines: true,
           complete: function(results) {
-            allData = allData.concat(results.data);
+            const normalizedRows = results.data.map(normalizeRow);
+            allData = allData.concat(normalizedRows);
             filesProcessed++;
             if (filesProcessed === files.length) {
               finalizeProcessing(allData);
@@ -61,23 +120,32 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
 
   function finalizeProcessing(allData) {
     window.allData = allData;
-    const upcStats = calculateUPC(allData, patientIdHeader);
+    const upcStats = calculateUPC(allData, headerMap);
     displayResults(upcStats);
-    displayTabulator(upcStats.patientUpcMap, patientIdHeader);
+    displayTabulator(upcStats.patientUpcMap, headerMap.patientId);
     document.getElementById('showGpFilterBtn').style.display = 'inline-block'; // <-- Add this line
   }
 });
 
 // Calculate UPC values for each patient and return overall statistics.
-function calculateUPC(data, patientIdHeader) {
+function calculateUPC(data, headerMap) {
   const patientMap = new Map();
   const patientUpcMap = new Map();
   const patientAgeMap = new Map();
 
+  if (!headerMap) return { overallMean: 0, patientUpcMap };
+
+  const patientIdHeader = headerMap.patientId;
+  const clinicianHeader = headerMap.clinician;
+  const ageHeader = headerMap.age;
+
   for (const row of data) {
     const patientID = row[patientIdHeader];
-    const clinician = row['Clinician'];
-    const age = row['Age in years'] ? Number(row['Age in years']) : null;
+    const clinician = row[clinicianHeader];
+    const ageValue = row[ageHeader];
+    const age = ageValue !== undefined && ageValue !== null && ageValue !== ''
+      ? Number(ageValue)
+      : null;
 
     if (!patientID || !clinician) continue;
 
@@ -382,10 +450,12 @@ document.getElementById('showGpFilterBtn').addEventListener('click', function() 
 // --- Modal Logic ---
 // Build and show modal allowing users to filter by GP.
 function showGpFilterModal() {
+  const clinicianHeader = window.headerMap?.clinician;
+  if (!clinicianHeader) return;
   // Count consults per GP
   const gpCounts = {};
   window.allData.forEach(row => {
-    const gp = row['Clinician'];
+    const gp = row[clinicianHeader];
     if (!gp) return;
     gpCounts[gp] = (gpCounts[gp] || 0) + 1;
   });
@@ -443,8 +513,10 @@ document.getElementById('applyGpFilter').addEventListener('click', function() {
   includedGPs = new Set();
   checks.forEach(chk => { if (chk.checked) includedGPs.add(chk.value); });
   // Filter allData and re-run analysis
-  const filteredData = window.allData.filter(row => includedGPs.has(row['Clinician']));
-  const upcStats = calculateUPC(filteredData, window.patientIdHeader);
+  const clinicianHeader = window.headerMap?.clinician;
+  if (!clinicianHeader) return;
+  const filteredData = window.allData.filter(row => includedGPs.has(row[clinicianHeader]));
+  const upcStats = calculateUPC(filteredData, window.headerMap);
   displayResults(upcStats);
-  displayTabulator(upcStats.patientUpcMap, window.patientIdHeader);
+  displayTabulator(upcStats.patientUpcMap, window.headerMap.patientId);
 });

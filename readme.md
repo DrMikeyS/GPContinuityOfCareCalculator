@@ -43,11 +43,11 @@ This tool is designed to work with appointment data exported from EMIS or SystmO
 
 3. **Export the Data**
    - Once the search has run, click **Breakdown Results**.
-   - Select the following columns:
-     - `Appointments -> Appointment Date`
-     - `Appointments -> Clinician`
-     - `Demographics -> Age in years`
-     - `Demographics -> NHS Number`
+  - Select the following columns (any of the equivalent headings shown are accepted):
+    - `Appointments -> Appointment Date` or `Date`
+    - `Appointments -> Clinician` or `User Details' Full Name`
+    - `Demographics -> Age in years` or `Age`
+    - `Demographics -> NHS Number` or `Patient ID`
    - Click **Refresh** to update the results.
    - When the results are ready, click the **CSV** button and save the file somewhere on your computer.
 
