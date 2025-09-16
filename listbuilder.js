@@ -18,6 +18,7 @@ function parseCsv(file) {
 let assignmentData = null;
 let latestAssignments = null;
 let patientIdHeader = null;
+let headerMap = null;
 const minAppointmentsInput = document.getElementById('minAppointments');
 const includeAllCheckbox = document.getElementById('includeAll');
 
@@ -41,7 +42,11 @@ async function loadData() {
     return;
   }
 
-  const requiredHeaders = ['Clinician', 'Appointment date'];
+  const headerAliases = {
+    patientId: ['Patient ID', 'NHS number', 'NHS Number'],
+    clinician: ['Clinician', "User Details' Full Name"],
+    appointmentDate: ['Appointment date', 'Date']
+  };
 
   const firstResults = await new Promise((resolve, reject) => {
     Papa.parse(files[0], {
@@ -52,27 +57,79 @@ async function loadData() {
     });
   });
 
-  patientIdHeader = firstResults.meta.fields.includes('Patient ID')
-    ? 'Patient ID'
-    : firstResults.meta.fields.includes('NHS number')
-      ? 'NHS number'
-      : null;
+  const fields = firstResults.meta.fields || [];
+  const normalizedFieldMap = new Map(
+    fields.map(field => [field.trim().toLowerCase(), field])
+  );
 
-  const missing = requiredHeaders.filter(h => !firstResults.meta.fields.includes(h));
-  if (missing.length || !patientIdHeader) {
-    const msgs = [];
-    if (!patientIdHeader) msgs.push('Patient ID or NHS number');
-    if (missing.length) msgs.push(...missing);
-    alert('Missing required headers: ' + msgs.join(', '));
+  const matchHeader = aliases => {
+    for (const alias of aliases) {
+      const normalized = alias.trim().toLowerCase();
+      if (normalizedFieldMap.has(normalized)) {
+        return normalizedFieldMap.get(normalized);
+      }
+    }
+    return null;
+  };
+
+  headerMap = {
+    patientId: matchHeader(headerAliases.patientId),
+    clinician: matchHeader(headerAliases.clinician),
+    appointmentDate: matchHeader(headerAliases.appointmentDate)
+  };
+
+  patientIdHeader = headerMap.patientId;
+
+  const missingHeaders = [];
+  if (!headerMap.patientId) missingHeaders.push('Patient ID or NHS Number');
+  if (!headerMap.clinician) missingHeaders.push("Clinician or User Details' Full Name");
+  if (!headerMap.appointmentDate) missingHeaders.push('Appointment date or Date');
+
+  if (missingHeaders.length) {
+    alert('Missing required headers: ' + missingHeaders.join(', '));
     return;
   }
 
+  const normalizeRow = row => {
+    const normalizedRow = { ...row };
+    const rowKeyLookup = new Map(
+      Object.keys(row).map(key => [key.trim().toLowerCase(), key])
+    );
+
+    const ensureField = (resolvedKey, aliases) => {
+      if (!resolvedKey) return;
+      if (resolvedKey in normalizedRow && normalizedRow[resolvedKey] !== undefined) return;
+      for (const alias of aliases) {
+        if (alias in normalizedRow && normalizedRow[alias] !== undefined) {
+          normalizedRow[resolvedKey] = normalizedRow[alias];
+          return;
+        }
+        const normalizedAlias = alias.trim().toLowerCase();
+        if (rowKeyLookup.has(normalizedAlias)) {
+          const sourceKey = rowKeyLookup.get(normalizedAlias);
+          const value = normalizedRow[sourceKey];
+          if (value !== undefined) {
+            normalizedRow[resolvedKey] = value;
+            return;
+          }
+        }
+      }
+    };
+
+    ensureField(headerMap.patientId, headerAliases.patientId);
+    ensureField(headerMap.clinician, headerAliases.clinician);
+    ensureField(headerMap.appointmentDate, headerAliases.appointmentDate);
+
+    return normalizedRow;
+  };
+
   // Load and combine data from the uploaded CSV files
-  const parsedArrays = [firstResults.data];
+  const parsedArrays = [firstResults.data.map(normalizeRow)];
   if (files.length > 1) {
     const otherFiles = files.slice(1);
     const otherArrays = await Promise.all(otherFiles.map(parseCsv));
-    parsedArrays.push(...otherArrays);
+    const normalizedOthers = otherArrays.map(rows => rows.map(normalizeRow));
+    parsedArrays.push(...normalizedOthers);
   }
   const combinedData = parsedArrays.flat();
 
@@ -87,7 +144,7 @@ async function loadData() {
   const patientClinicianCounts = new Map();
   combinedData.forEach(row => {
     const pid = row[patientIdHeader];
-    const clinician = row['Clinician'];
+    const clinician = row[headerMap.clinician];
     if (!pid || !clinician) return;
     if (!patientClinicianCounts.has(pid)) {
       patientClinicianCounts.set(pid, {});
@@ -114,7 +171,7 @@ async function loadData() {
   // Count appointments per clinician and scale to session estimates
   const clinicianAppointmentCounts = {};
   combinedData.forEach(row => {
-    const clinician = row['Clinician'];
+    const clinician = row[headerMap.clinician];
     if (!clinician) return;
     clinicianAppointmentCounts[clinician] =
       (clinicianAppointmentCounts[clinician] || 0) + 1;
