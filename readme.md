@@ -71,7 +71,50 @@ This tool is designed to work with appointment data exported from EMIS or SystmO
 
 ## For EMIS Users
 
-- Coming soon
+To generate a CSV from EMIS Web that matches the format needed by the Continuity Calculator (i.e. one row per GP consultation, with columns: `NHS Number, Age, Date, User Details' Full Name`), follow these steps:
+
+1. **Open Population Reporting**  
+   From the EMIS main menu: **Reporting → Population Reporting**.
+
+2. **Create (or import) a Search**  
+   - If you already have a search that returns all **consultations in the last 12 months** with a GP, import it (via **Import → Enquiry Document**) or build it from scratch.  
+   - If building: use **Add → Search → Consultations**; filter by date (last year) and restrict to GP consultations (e.g. by consultation type or by clinician role).
+
+3. **Add a List Report**  
+   - With your search selected, click **Add → Patient → List report**.  
+   - In “Results from”, select the search you just made (or imported).
+
+4. **Define the required report columns**  
+   Add (via **Add**) the following fields:  
+   - `Patient Details → NHS Number`  
+   - `Patient Details → Age (in years)`  
+   - `Consultations → Date` (this is the date of the individual consultation)  
+   - `Consultations → User Details' Full Name` (this will capture the clinician name for each consult)
+
+5. **Save & Run the report**  
+   Save the report, then run it. Ensure the output shows multiple rows per patient (one for each consultation), by virtue of listing the date & clinician of each consultation.
+
+6. **View Results**  
+   Once the report has run, click **View Results**. If the output contains expansions (i.e. multiple consultation rows per patient), confirm all the required fields appear correctly.
+
+7. **Export to CSV**  
+   - From the View Results screen, choose **Export** → **CSV**.  
+   - If given the option, tick **“Exclude report header”** only if you want only your column headings in row 1 (you may **not** want to exclude header so you can see them).  
+   - Save the CSV locally.
+
+8. **Check output format**  
+   - Ensure the headings are exactly: `NHS Number, Age, Date, User Details' Full Name` (in that order).  
+   - Check the “Date” values are the **consultation dates**.  
+   - Check “User Details' Full Name” corresponds to the GP clinician for each consultation.  
+   - Check that ages are in years (properly calculated from date of birth to date of consultation).
+
+---
+
+### Supporting links & references
+
+- How to export appointment or consultations data from EMIS Web for analysis using Appointment Reporting → Tabular view → Export.  [Hero Health](https://www.herohealthsoftware.net/primary-care/emis-support/article/how-do-i-export-appointment-data-from-emis-web-for-analysis?utm_source=chatgpt.com)  
+- EMIS Web guidance for creating list reports in Population Reporting and exporting CSVs.  [Ardens EMIS Web](https://support-ew.ardens.org.uk/support/solutions/articles/31000176445-export-and-import-patient-lists?utm_source=chatgpt.com)  
+
 
 ---
 
