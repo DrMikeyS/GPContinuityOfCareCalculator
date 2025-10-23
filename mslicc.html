@@ -139,11 +139,11 @@
             <button class="btn btn-secondary mb-3" id="showGpFilterBtn" style="display:none;">Filter GPs</button>
 
             <div>
-              <canvas id="msliccHistogram" height="200"></canvas>
+              <canvas id="msliccMonthlyTrend" height="200"></canvas>
             </div>
-            <div class="mt-4">
-              <canvas id="msliccAgeHistogram" height="200"></canvas>
-            </div>
+            <p id="msliccTrendNote" class="text-muted small mt-2" style="display:none;">
+              Scores in the first three months may appear artificially high because patients have not yet had time to establish a regular GP within the dataset.
+            </p>
             <div id="patientUpcs"></div>
             <div id="patientUpcsTable" class="mt-4"></div>
             <button class="btn btn-primary mt-2" id="downloadCsvBtn" style="display:none;">Download CSV</button>
