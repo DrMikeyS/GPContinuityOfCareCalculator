@@ -23,7 +23,6 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
   const headerAliases = {
     patientId: ['Patient ID', 'NHS number', 'NHS Number'],
     clinician: ['Clinician', "User Details' Full Name"],
-    age: ['Age in years', 'Age'],
     appointmentDate: ['Appointment date', 'Date']
   };
 
@@ -49,7 +48,6 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
       headerMap = {
         patientId: matchHeader(headerAliases.patientId),
         clinician: matchHeader(headerAliases.clinician),
-        age: matchHeader(headerAliases.age),
         appointmentDate: matchHeader(headerAliases.appointmentDate)
       };
 
@@ -92,7 +90,6 @@ document.getElementById('csvFile').addEventListener('change', function(event) {
 
         ensureField(headerMap.patientId, headerAliases.patientId);
         ensureField(headerMap.clinician, headerAliases.clinician);
-        ensureField(headerMap.age, headerAliases.age);
         ensureField(headerMap.appointmentDate, headerAliases.appointmentDate);
 
         return normalizedRow;
@@ -163,25 +160,23 @@ function parseAppointmentDate(value) {
 }
 
 function prepareMsliccContext(data, headerMap) {
-  const { records, patientAgeMap } = parseMsliccData(data, headerMap);
-  return { records, patientAgeMap };
+  const records = parseMsliccData(data, headerMap);
+  return { records };
 }
 
 function parseMsliccData(data, headerMap) {
   const records = [];
-  const patientAgeMap = new Map();
 
   if (!headerMap) {
-    return { records, patientAgeMap };
+    return records;
   }
 
   const patientIdHeader = headerMap.patientId;
   const clinicianHeader = headerMap.clinician;
-  const ageHeader = headerMap.age;
   const appointmentDateHeader = headerMap.appointmentDate;
 
   if (!patientIdHeader || !clinicianHeader || !appointmentDateHeader) {
-    return { records, patientAgeMap };
+    return records;
   }
 
   for (const row of data) {
@@ -193,17 +188,10 @@ function parseMsliccData(data, headerMap) {
     const appointmentDate = parseAppointmentDate(rawDate);
     if (!appointmentDate) continue;
 
-    if (ageHeader && row[ageHeader] !== undefined && row[ageHeader] !== null && row[ageHeader] !== '') {
-      const numericAge = Number(row[ageHeader]);
-      if (!Number.isNaN(numericAge) && !patientAgeMap.has(patientId)) {
-        patientAgeMap.set(patientId, numericAge);
-      }
-    }
-
     records.push({ patientId, clinician, appointmentDate });
   }
 
-  return { records, patientAgeMap };
+  return records;
 }
 
 function calculateMSLICC(context, measurementMonthStart) {
@@ -227,7 +215,6 @@ function calculateMSLICC(context, measurementMonthStart) {
   }
 
   const records = context.records;
-  const patientAgeMap = context.patientAgeMap || new Map();
 
   let monthStart = null;
   if (measurementMonthStart instanceof Date && !Number.isNaN(measurementMonthStart.getTime())) {
@@ -307,14 +294,12 @@ function calculateMSLICC(context, measurementMonthStart) {
   for (const [patientId, stats] of monthByPatient.entries()) {
     patientsWithRegularThisMonth.add(patientId);
     patientsWithRegularGp += 1;
-    const age = patientAgeMap.get(patientId) ?? null;
     const ratio = stats.total ? stats.withRegular / stats.total : 0;
     patientStats.set(patientId, {
       ratio,
       total: stats.total,
       withRegular: stats.withRegular,
-      regularGp: stats.regularGp,
-      age
+      regularGp: stats.regularGp
     });
   }
 
@@ -540,9 +525,18 @@ function drawMsliccMonthlyTrend(context, selectedMonthStart) {
   }
 
   const labels = months.map(month => formatMonthLabel(month));
-  const values = months.map(month => {
-    const monthStats = calculateMSLICC(context, month);
-    return monthStats.denominator ? Number(monthStats.value.toFixed(2)) : null;
+  const monthStatsList = months.map(month => calculateMSLICC(context, month));
+  const msliccValues = monthStatsList.map(stats =>
+    stats.denominator ? Number(stats.value.toFixed(2)) : null
+  );
+  const eligibleShareValues = monthStatsList.map(stats => {
+    if (!stats.totalMonthAppointments) {
+      return null;
+    }
+    const share = stats.denominator
+      ? (stats.denominator / stats.totalMonthAppointments) * 100
+      : 0;
+    return Number(share.toFixed(2));
   });
 
   clearChart('msliccMonthlyTrendChart', 'msliccMonthlyTrend');
@@ -554,33 +548,45 @@ function drawMsliccMonthlyTrend(context, selectedMonthStart) {
     type: 'line',
     data: {
       labels,
-      datasets: [{
-        label: 'mSLICC by Month',
-        data: values,
-        borderColor: 'rgba(54, 162, 235, 1)',
-        backgroundColor: 'rgba(54, 162, 235, 0.1)',
-        borderWidth: 2,
-        tension: 0.2,
-        spanGaps: true,
-        pointRadius: context => {
-          const month = months[context.dataIndex];
-          const value = month ? formatMonthValue(month) : null;
-          return value && value === selectedMonthValue ? 6 : 4;
+      datasets: [
+        {
+          label: 'mSLICC by Month',
+          data: msliccValues,
+          borderColor: 'rgba(54, 162, 235, 1)',
+          backgroundColor: 'rgba(54, 162, 235, 0.1)',
+          borderWidth: 2,
+          tension: 0.2,
+          spanGaps: true,
+          pointRadius: context => {
+            const month = months[context.dataIndex];
+            const value = month ? formatMonthValue(month) : null;
+            return value && value === selectedMonthValue ? 6 : 4;
+          },
+          pointBackgroundColor: context => {
+            const month = months[context.dataIndex];
+            const value = month ? formatMonthValue(month) : null;
+            return value && value === selectedMonthValue ? 'rgba(220, 53, 69, 1)' : 'rgba(54, 162, 235, 1)';
+          },
+          segment: {
+            borderDash: ctx => (ctx.p0DataIndex < 3 ? [4, 4] : undefined)
+          }
         },
-        pointBackgroundColor: context => {
-          const month = months[context.dataIndex];
-          const value = month ? formatMonthValue(month) : null;
-          return value && value === selectedMonthValue ? 'rgba(220, 53, 69, 1)' : 'rgba(54, 162, 235, 1)';
-        },
-        segment: {
-          borderDash: ctx => (ctx.p0DataIndex < 3 ? [4, 4] : undefined)
+        {
+          label: 'Eligible appointments (%)',
+          data: eligibleShareValues,
+          borderColor: 'rgba(75, 192, 192, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.1)',
+          borderWidth: 2,
+          tension: 0.2,
+          spanGaps: true,
+          pointRadius: 4
         }
-      }]
+      ]
     },
     options: {
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: { display: true },
         tooltip: {
           callbacks: {
             label: context => {
@@ -588,7 +594,8 @@ function drawMsliccMonthlyTrend(context, selectedMonthStart) {
               if (value === null || value === undefined) {
                 return 'Insufficient data';
               }
-              return `mSLICC: ${value.toFixed(1)}%`;
+              const label = context.dataset?.label || 'Value';
+              return `${label}: ${value.toFixed(1)}%`;
             }
           }
         }
@@ -597,7 +604,7 @@ function drawMsliccMonthlyTrend(context, selectedMonthStart) {
         y: {
           beginAtZero: true,
           max: 100,
-          title: { display: true, text: 'mSLICC (%)' }
+          title: { display: true, text: 'Percentage (%)' }
         },
         x: {
           title: { display: true, text: 'Month' }
@@ -634,8 +641,7 @@ function displayTabulator(patientStatsMap, patientIdHeader) {
     regularGP: val.regularGp,
     msliccPercent: val.ratio * 100,
     appointments: val.total,
-    withRegular: val.withRegular,
-    age: val.age
+    withRegular: val.withRegular
   }));
 
   tableDiv.style.display = 'block';
@@ -653,8 +659,7 @@ function displayTabulator(patientStatsMap, patientIdHeader) {
       { title: 'Regular GP', field: 'regularGP', sorter: 'string', headerFilter: 'input' },
       { title: 'mSLICC %', field: 'msliccPercent', sorter: 'number', formatter: cell => cell.getValue().toFixed(1) },
       { title: 'Appointments (month)', field: 'appointments', sorter: 'number' },
-      { title: 'With regular GP', field: 'withRegular', sorter: 'number' },
-      { title: 'Age', field: 'age', sorter: 'number' }
+      { title: 'With regular GP', field: 'withRegular', sorter: 'number' }
     ],
     initialSort: [
       { column: 'appointments', dir: 'desc' }
