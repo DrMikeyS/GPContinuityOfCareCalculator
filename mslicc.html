@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mSLICC Continuity Calculator</title>
+  <link rel="stylesheet" href="libs/bootstrap.min.css">
+  <link href="libs/tabulator.min.css" rel="stylesheet">
+  <script src="libs/papaparse.min.js"></script>
+  <script type="text/javascript" src="libs/tabulator.min.js"></script>
+  <script src="libs/chart.js"></script>
+  <script src="libs/chartjs-plugin-annotation.min.js"></script>
+</head>
+<body>
+  <div class="container py-5">
+    <div class="alert alert-info mb-4" role="alert">
+      <h1 class="h1 mb-2">Welcome to the mSLICC Continuity Calculator</h1>
+      <p>
+        This tool analyses appointment data to calculate the Modified St Leonard's Index of Continuity of Care (mSLICC) for your practice.
+        <br>
+        <strong>To get started:</strong> Export appointment search results from your clinical system (EMIS or SystmOne) as a CSV file, then upload it below.
+      </p>
+      <ul class="mb-0">
+        <li>EMIS: Use the "Appointments" search and export results as CSV.</li>
+        <li>SystmOne: Use the "Appointments" reporting tool and export as CSV.</li>
+      </ul>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h2 class="card-title h3 mb-4 text-center">Upload Appointment CSV</h2>
+            <input type="file" id="csvFile" accept=".csv" class="form-control mb-3" />
+            <div class="mb-3" id="monthSelectorContainer" style="display:none;">
+              <label for="measurementMonthSelect" class="form-label">Measurement month</label>
+              <select id="measurementMonthSelect" class="form-select"></select>
+            </div>
+            <pre id="output" class="bg-body-secondary p-2 rounded small"></pre>
+            <div id="results" class="mb-3"></div>
+
+            <div id="helpSection" style="display:none;">
+              <div class="accordion mb-3" id="helpAccordion">
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="definitionHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#definitionCollapse" aria-expanded="false" aria-controls="definitionCollapse">
+                      What is mSLICC?
+                    </button>
+                  </h2>
+                  <div id="definitionCollapse" class="accordion-collapse collapse" aria-labelledby="definitionHeading" data-bs-parent="#helpAccordion">
+                    <div class="accordion-body">
+                      <p>
+                        <strong>mSLICC (Modified St Leonard’s Index of Continuity of Care)</strong> is a monthly measure of GP continuity representing the percentage of consultations in which patients see their own regular GP.
+                      </p>
+                      <p class="mb-0">
+                        <strong>Equation (in words):</strong><br>
+                        mSLICC = (Number of appointments in the measurement month where the patient was seen by their regular GP) ÷ (Total number of appointments in the measurement month for patients who have a regular GP) × 100.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="logicHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#logicCollapse" aria-expanded="false" aria-controls="logicCollapse">
+                      How is the regular GP determined?
+                    </button>
+                  </h2>
+                  <div id="logicCollapse" class="accordion-collapse collapse" aria-labelledby="logicHeading" data-bs-parent="#helpAccordion">
+                    <div class="accordion-body">
+                      <ol>
+                        <li>Use all appointment data immediately prior to the measurement month (exclude the current month).</li>
+                        <li>Identify all GPs that patient has seen in that appointment data period.</li>
+                        <li>Count the number of appointments with each GP.</li>
+                        <li>Select as the regular GP the one the patient has seen at least twice and most frequently.</li>
+                        <li>If there is a tie (two or more GPs with the same highest count), choose the GP with the most recent appointment with that patient.</li>
+                        <li>If no GP has been seen at least twice, the patient has no regular GP and is excluded from the denominator.</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="variablesHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#variablesCollapse" aria-expanded="false" aria-controls="variablesCollapse">
+                      Variables used in the calculation
+                    </button>
+                  </h2>
+                  <div id="variablesCollapse" class="accordion-collapse collapse" aria-labelledby="variablesHeading" data-bs-parent="#helpAccordion">
+                    <div class="accordion-body">
+                      <div class="table-responsive">
+                        <table class="table table-bordered table-sm mb-0">
+                          <thead>
+                            <tr>
+                              <th scope="col">Variable</th>
+                              <th scope="col">Meaning</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>month_start</code>, <code>month_end</code></td>
+                              <td>Start and end dates of the measurement month.</td>
+                            </tr>
+                            <tr>
+                              <td><code>appointments</code></td>
+                              <td>All GP appointment records (fields: <code>patient_id</code>, <code>gp_id</code>, <code>datetime</code>).</td>
+                            </tr>
+                            <tr>
+                              <td><code>lookback_start</code></td>
+                              <td><code>month_start</code> minus start of appointment data period.</td>
+                            </tr>
+                            <tr>
+                              <td><code>lookback_end</code></td>
+                              <td><code>month_start</code> minus 1 day.</td>
+                            </tr>
+                            <tr>
+                              <td><code>regular_gp[patient_id]</code></td>
+                              <td>GP determined using the lookback rules above.</td>
+                            </tr>
+                            <tr>
+                              <td><code>month_appointments</code></td>
+                              <td>All GP appointments where <code>datetime ∈ [month_start, month_end]</code> and <code>patient_id</code> belongs to patients with a regular GP.</td>
+                            </tr>
+                            <tr>
+                              <td><code>appointments_with_regular_gp</code></td>
+                              <td>Subset of <code>month_appointments</code> where <code>gp_id == regular_gp[patient_id]</code>.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <p class="mb-0 mt-3">
+                        <strong>Formula (in pseudocode):</strong><br>
+                        <code>mSLICC = (len(appointments_with_regular_gp) / len(month_appointments)) * 100</code>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn btn-secondary mb-3" id="showGpFilterBtn" style="display:none;">Filter GPs</button>
+
+            <div>
+              <canvas id="msliccHistogram" height="200"></canvas>
+            </div>
+            <div class="mt-4">
+              <canvas id="msliccAgeHistogram" height="200"></canvas>
+            </div>
+            <div id="patientUpcs"></div>
+            <div id="patientUpcsTable" class="mt-4"></div>
+            <button class="btn btn-primary mt-2" id="downloadCsvBtn" style="display:none;">Download CSV</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GP Filter Modal -->
+  <div class="modal fade" id="gpFilterModal" tabindex="-1" aria-labelledby="gpFilterModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="gpFilterModalLabel">Select GPs to Include</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted">Select the GPs you want to include in the analysis. Use the buttons below to select or deselect all GPs.</p>
+          <p class="text-muted">Note: Selecting fewer GPs will improve the mSLICC scores artificially. Therefore, only exclude GPs who see almost exclusively acute cases.</p>
+          <div class="mb-2">
+            <button type="button" class="btn btn-sm btn-outline-primary me-2" id="gpSelectAllBtn">Select All</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="gpSelectNoneBtn">Select None</button>
+          </div>
+          <div id="gpFilterList"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" id="applyGpFilter" data-bs-dismiss="modal">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="libs/bootstrap.min.js"></script>
+  <script type="text/javascript" src="mslicc.js"></script>
+</body>
+</html>
