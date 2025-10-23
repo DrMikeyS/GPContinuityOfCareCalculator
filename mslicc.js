@@ -446,10 +446,6 @@ function formatDate(date) {
   return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function mean(arr) {
-  return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-}
-
 function displayResults(stats) {
   const resultsDiv = document.getElementById('results');
 
@@ -467,6 +463,8 @@ function displayResults(stats) {
   const monthLabel = stats.measurementLabel;
   const measurementRange = `${formatDate(stats.measurementMonthStart)} – ${formatDate(stats.measurementMonthEnd)}`;
 
+  drawMsliccMonthlyTrend(window.msliccContext, stats.measurementMonthStart);
+
   if (!stats.denominator) {
     resultsDiv.innerHTML = `
       <div class="alert alert-info" role="alert">
@@ -476,8 +474,6 @@ function displayResults(stats) {
       </div>
     `;
     document.getElementById('helpSection').style.display = 'block';
-    resetMsliccCharts();
-    displayTabulator(new Map(), window.headerMap?.patientId);
     return;
   }
 
@@ -504,13 +500,14 @@ function displayResults(stats) {
   `;
 
   document.getElementById('helpSection').style.display = 'block';
-  drawMsliccHistogram(stats.patientStats);
-  drawMsliccAgeHistogram(stats.patientStats);
 }
 
 function resetMsliccCharts() {
-  clearChart('msliccHistogramChart', 'msliccHistogram');
-  clearChart('msliccAgeHistogramChart', 'msliccAgeHistogram');
+  clearChart('msliccMonthlyTrendChart', 'msliccMonthlyTrend');
+  const note = document.getElementById('msliccTrendNote');
+  if (note) {
+    note.style.display = 'none';
+  }
 }
 
 function clearChart(chartRef, canvasId) {
@@ -527,85 +524,71 @@ function clearChart(chartRef, canvasId) {
   }
 }
 
-function drawMsliccHistogram(patientStatsMap) {
-  if (!patientStatsMap || patientStatsMap.size === 0) {
-    clearChart('msliccHistogramChart', 'msliccHistogram');
+function drawMsliccMonthlyTrend(context, selectedMonthStart) {
+  if (!context || !context.records || !context.records.length) {
+    resetMsliccCharts();
     return;
   }
 
-  const cohortBins = {};
-  for (const [, val] of patientStatsMap.entries()) {
-    const total = val.total;
-    if (!total) continue;
-    let bin = total;
-    if (bin > 10) bin = '10+';
-    if (!cohortBins[bin]) cohortBins[bin] = [];
-    cohortBins[bin].push(val.ratio * 100);
-  }
+  const canvas = document.getElementById('msliccMonthlyTrend');
+  if (!canvas) return;
 
-  const labels = [];
-  const means = [];
-  Object.keys(cohortBins)
-    .sort((a, b) => {
-      if (a === '10+') return 1;
-      if (b === '10+') return -1;
-      return Number(a) - Number(b);
-    })
-    .forEach(bin => {
-      labels.push(bin.toString());
-      means.push(mean(cohortBins[bin]));
-    });
-
-  if (!labels.length) {
-    clearChart('msliccHistogramChart', 'msliccHistogram');
+  const months = getMeasurementMonths(context.records);
+  if (!months.length) {
+    resetMsliccCharts();
     return;
   }
 
-  clearChart('msliccHistogramChart', 'msliccHistogram');
+  const labels = months.map(month => formatMonthLabel(month));
+  const values = months.map(month => {
+    const monthStats = calculateMSLICC(context, month);
+    return monthStats.denominator ? Number(monthStats.value.toFixed(2)) : null;
+  });
 
-  const ctx = document.getElementById('msliccHistogram').getContext('2d');
-  window.msliccHistogramChart = new Chart(ctx, {
-    type: 'bar',
+  clearChart('msliccMonthlyTrendChart', 'msliccMonthlyTrend');
+
+  const selectedMonthValue = selectedMonthStart ? formatMonthValue(selectedMonthStart) : null;
+
+  const ctx = canvas.getContext('2d');
+  window.msliccMonthlyTrendChart = new Chart(ctx, {
+    type: 'line',
     data: {
-      labels: labels,
+      labels,
       datasets: [{
-        label: 'Mean mSLICC by Number of Appointments',
-        data: means,
-        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+        label: 'mSLICC by Month',
+        data: values,
         borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 1
+        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+        borderWidth: 2,
+        tension: 0.2,
+        spanGaps: true,
+        pointRadius: context => {
+          const month = months[context.dataIndex];
+          const value = month ? formatMonthValue(month) : null;
+          return value && value === selectedMonthValue ? 6 : 4;
+        },
+        pointBackgroundColor: context => {
+          const month = months[context.dataIndex];
+          const value = month ? formatMonthValue(month) : null;
+          return value && value === selectedMonthValue ? 'rgba(220, 53, 69, 1)' : 'rgba(54, 162, 235, 1)';
+        },
+        segment: {
+          borderDash: ctx => (ctx.p0DataIndex < 3 ? [4, 4] : undefined)
+        }
       }]
     },
     options: {
+      interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
-        annotation: {
-          annotations: {
-            amberLine: {
-              type: 'line',
-              yMin: 40,
-              yMax: 40,
-              borderColor: 'orange',
-              borderWidth: 2,
-              label: {
-                content: '40%',
-                enabled: true,
-                position: 'end',
-                color: 'orange'
+        tooltip: {
+          callbacks: {
+            label: context => {
+              const value = context.parsed.y;
+              if (value === null || value === undefined) {
+                return 'Insufficient data';
               }
-            },
-            greenLine: {
-              type: 'line',
-              yMin: 70,
-              yMax: 70,
-              borderColor: 'green',
-              borderWidth: 2,
-              label: {
-                content: '70%',
-                enabled: true,
-                position: 'end',
-                color: 'green'
-              }
+              return `mSLICC: ${value.toFixed(1)}%`;
             }
           }
         }
@@ -614,111 +597,19 @@ function drawMsliccHistogram(patientStatsMap) {
         y: {
           beginAtZero: true,
           max: 100,
-          title: { display: true, text: 'Mean mSLICC (%)' }
+          title: { display: true, text: 'mSLICC (%)' }
         },
         x: {
-          title: { display: true, text: 'Number of Appointments in Month' }
+          title: { display: true, text: 'Month' }
         }
       }
     }
   });
-}
 
-function drawMsliccAgeHistogram(patientStatsMap) {
-  if (!patientStatsMap || patientStatsMap.size === 0) {
-    clearChart('msliccAgeHistogramChart', 'msliccAgeHistogram');
-    return;
+  const note = document.getElementById('msliccTrendNote');
+  if (note) {
+    note.style.display = 'block';
   }
-
-  const cohorts = [
-    { label: '0-17', min: 0, max: 17 },
-    { label: '18-29', min: 18, max: 29 },
-    { label: '30-59', min: 30, max: 59 },
-    { label: '60-69', min: 60, max: 69 },
-    { label: '70-89', min: 70, max: 89 },
-    { label: '90+', min: 90, max: Infinity }
-  ];
-
-  const cohortBins = {};
-  for (const [, val] of patientStatsMap.entries()) {
-    const age = val.age;
-    if (age === null || Number.isNaN(age) || val.total === 0) continue;
-    const cohort = cohorts.find(c => age >= c.min && age <= c.max);
-    if (!cohort) continue;
-    if (!cohortBins[cohort.label]) cohortBins[cohort.label] = [];
-    cohortBins[cohort.label].push(val.ratio * 100);
-  }
-
-  const labels = cohorts.map(c => c.label);
-  const means = labels.map(label => mean(cohortBins[label] || []));
-
-  const hasAgeData = labels.some(label => (cohortBins[label] || []).length > 0);
-  if (!hasAgeData) {
-    clearChart('msliccAgeHistogramChart', 'msliccAgeHistogram');
-    return;
-  }
-
-  clearChart('msliccAgeHistogramChart', 'msliccAgeHistogram');
-
-  const ctx = document.getElementById('msliccAgeHistogram').getContext('2d');
-  window.msliccAgeHistogramChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Mean mSLICC by Age Cohort',
-        data: means,
-        backgroundColor: 'rgba(255, 159, 64, 0.7)',
-        borderColor: 'rgba(255, 159, 64, 1)',
-        borderWidth: 1
-      }]
-    },
-    options: {
-      plugins: {
-        legend: { display: false },
-        annotation: {
-          annotations: {
-            amberLine: {
-              type: 'line',
-              yMin: 40,
-              yMax: 40,
-              borderColor: 'orange',
-              borderWidth: 2,
-              label: {
-                content: '40%',
-                enabled: true,
-                position: 'end',
-                color: 'orange'
-              }
-            },
-            greenLine: {
-              type: 'line',
-              yMin: 70,
-              yMax: 70,
-              borderColor: 'green',
-              borderWidth: 2,
-              label: {
-                content: '70%',
-                enabled: true,
-                position: 'end',
-                color: 'green'
-              }
-            }
-          }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: 100,
-          title: { display: true, text: 'Mean mSLICC (%)' }
-        },
-        x: {
-          title: { display: true, text: 'Age Cohort' }
-        }
-      }
-    }
-  });
 }
 
 function displayTabulator(patientStatsMap, patientIdHeader) {
